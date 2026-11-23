@@ -1,0 +1,1588 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>24 — Nest · Codevember 2026</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: #0d1120;
+      color: #fff;
+      font: 16px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    header {
+      position: fixed;
+      inset: 0 0 auto 0;
+      z-index: 20;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: .5rem 1.75rem;
+      padding: 1.25rem clamp(1rem, 4vw, 2.5rem);
+      pointer-events: none;
+      text-shadow: 0 1px 10px rgb(0 0 0 / .5);
+    }
+    .nav {
+      color: #fff;
+      text-decoration: none;
+      opacity: .75;
+      white-space: nowrap;
+      transition: opacity .15s;
+      pointer-events: auto;
+    }
+    .nav:hover, .nav:focus-visible { opacity: 1; }
+    .nav .num { font-variant-numeric: tabular-nums; opacity: .6; }
+    h1 {
+      margin: 0;
+      font-size: clamp(1rem, 2.5vw, 1.25rem);
+      font-weight: 600;
+      letter-spacing: .02em;
+      white-space: nowrap;
+    }
+    h1 .day {
+      margin-right: .6rem;
+      font-size: .75em;
+      font-weight: 400;
+      text-transform: uppercase;
+      letter-spacing: .18em;
+      opacity: .6;
+    }
+    main { position: fixed; inset: 0; }
+    main canvas { display: block; width: 100%; height: 100%; }
+    a:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+    #boot {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: grid;
+      place-items: center;
+      padding: 2rem;
+      text-align: center;
+      background: #0d1120;
+      color: #93a0b4;
+      font-size: .85rem;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      transition: opacity .9s;
+    }
+    #boot.done { opacity: 0; pointer-events: none; }
+    #boot small { display: block; margin-top: .7rem; letter-spacing: .02em; text-transform: none; font-size: .8rem; color: #67748a; }
+    .lil-gui.autoPlace { top: 14px; right: 16px; z-index: 30; }
+    .lil-gui { --font-size: 12px; --input-font-size: 11px; }
+    @media (max-width: 700px) {
+      .lil-gui.autoPlace { top: auto; bottom: 12px; left: 12px; right: 12px; width: auto; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <a class="nav prev" href="../23/index.html" rel="prev"><span class="arrow" aria-hidden="true">←</span> <span class="num">23</span> Magma</a>
+    <h1><span class="day">Day 24 of 30</span> Nest</h1>
+    <a class="nav next" href="../25/index.html" rel="next"><span class="num">25</span> Veil <span class="arrow" aria-hidden="true">→</span></a>
+  </header>
+
+  <main id="stage"></main>
+
+  <div id="boot">Hatching the scene<small>loading three.js…</small></div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/",
+      "lil-gui": "https://cdn.jsdelivr.net/npm/lil-gui@0.20.0/dist/lil-gui.esm.js"
+    }
+  }
+  </script>
+
+  <script>
+    (function () {
+      var boot = document.getElementById('boot');
+      function fail(msg) {
+        if (!boot) return;
+        boot.classList.remove('done');
+        boot.innerHTML = 'Could not hatch the scene<small></small>';
+        boot.querySelector('small').textContent = String(msg || 'Unknown error');
+      }
+      window.addEventListener('error', function (e) {
+        fail(e.error && e.error.message ? e.error.message : e.message);
+      });
+      window.addEventListener('unhandledrejection', function (e) {
+        fail(e.reason && e.reason.message ? e.reason.message : e.reason);
+      });
+      setTimeout(function () {
+        if (!window.__nestReady && boot && !boot.classList.contains('done')) {
+          var s = boot.querySelector('small');
+          if (s) s.textContent = 'still loading three.js from the CDN — check your network connection';
+        }
+      }, 10000);
+    })();
+  </script>
+
+  <script type="module">
+  import * as THREE from 'three';
+  import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+  import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+  import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+  import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+  import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+  import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+  import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+  import GUI from 'lil-gui';
+
+  /* ------------------------------------------------------------------ */
+  /* helpers                                                             */
+  /* ------------------------------------------------------------------ */
+
+  const clamp01 = (v) => Math.min(1, Math.max(0, v));
+  const smoothstep = (x, a, b) => {
+    const t = clamp01((x - a) / (b - a));
+    return t * t * (3 - 2 * t);
+  };
+
+  function makeRng(seed) {
+    let a = (seed | 0) || 1;
+    return () => {
+      a |= 0;
+      a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function hash2(x, y) {
+    const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453123;
+    return s - Math.floor(s);
+  }
+
+  function vnoise(x, y) {
+    const xi = Math.floor(x), yi = Math.floor(y);
+    const xf = x - xi, yf = y - yi;
+    const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+    const a = hash2(xi, yi), b = hash2(xi + 1, yi), c = hash2(xi, yi + 1), d = hash2(xi + 1, yi + 1);
+    return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+  }
+
+  function fbm(x, y, oct = 4) {
+    let f = 0, amp = 0.5, tot = 0;
+    for (let i = 0; i < oct; i++) {
+      f += vnoise(x, y) * amp;
+      tot += amp;
+      x = x * 2.03 + 11.7;
+      y = y * 1.97 + 5.3;
+      amp *= 0.5;
+    }
+    return f / tot;
+  }
+
+  const UP = new THREE.Vector3(0, 1, 0);
+  const WHITE = new THREE.Color(0xffffff);
+  const _p = new THREE.Vector3();
+  const _n = new THREE.Vector3();
+  const _q = new THREE.Quaternion();
+  const _yawQ = new THREE.Quaternion();
+  const _s = new THREE.Vector3();
+  const _m4 = new THREE.Matrix4();
+  const _e = new THREE.Euler();
+  const _c = new THREE.Color();
+
+  /* color stops ------------------------------------------------------- */
+
+  function sampleStops(stops, t, out) {
+    t = clamp01(t);
+    let i = 1;
+    while (i < stops.length - 1 && stops[i][0] < t) i++;
+    const [t0, c0] = stops[i - 1], [t1, c1] = stops[i];
+    return out.copy(c0).lerp(c1, clamp01((t - t0) / (t1 - t0)));
+  }
+
+  const GRASS_STOPS = [
+    [0.0, new THREE.Color(0x6f964d)],
+    [0.45, new THREE.Color(0x7fa455)],
+    [0.8, new THREE.Color(0x5f8542)],
+    [1.0, new THREE.Color(0x4c6c35)],
+  ];
+  const DIRT_STOPS = [
+    [0.0, new THREE.Color(0x7c5c3c)],
+    [0.08, new THREE.Color(0x5d4630)],
+    [0.3, new THREE.Color(0x4a392b)],
+    [0.55, new THREE.Color(0x3d3231)],
+    [0.8, new THREE.Color(0x342c36)],
+    [1.0, new THREE.Color(0x221d29)],
+  ];
+  const GRASS_COLORS = [0x6f9a4e, 0x84aa5b, 0x5c8340, 0x95b465, 0xb1a25e].map((h) => new THREE.Color(h));
+
+  /* ------------------------------------------------------------------ */
+  /* island shape                                                        */
+  /* ------------------------------------------------------------------ */
+
+  const ISLAND_SCALE = 1.6;
+  const DOME_H = 0.46;
+  const CONE_DEPTH = 1.55;
+  const APEX_X = 0.16, APEX_Z = -0.12;
+  const NEST_RHO = 0.2, NEST_THETA = 1.05;
+
+  function makeSurface(seed) {
+    const s = seed * 7.31 + 0.5;
+    const bA = seed * 3.17 + 2.5;
+    const rim = (th) => 1 + 0.15 * (fbm(Math.cos(th) * 1.55 + s, Math.sin(th) * 1.55 - s, 3) - 0.5) * 2;
+    const point = (rho, th, out = new THREE.Vector3()) => {
+      const rr = rho * rim(th);
+      const x = Math.cos(th) * rr, z = Math.sin(th) * rr;
+      const fall = Math.max(0, 1 - rho * rho);
+      const bump = 0.055 * (fbm(x * 3.1 + bA, z * 3.1 - bA, 3) - 0.5) * fall;
+      return out.set(x, DOME_H * Math.sqrt(fall) + bump, z);
+    };
+    const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+    const normal = (rho, th, out = new THREE.Vector3()) => {
+      point(rho, th, a);
+      point(Math.min(1, rho + 1e-3), th, b);
+      point(rho, th + 1e-3, c);
+      b.sub(a);
+      c.sub(a);
+      out.crossVectors(c, b).normalize();
+      if (out.y < 0) out.negate();
+      return out;
+    };
+    return { seed, rim, point, normal };
+  }
+
+  function ensureOutward(geo, center) {
+    const pos = geo.attributes.position, nrm = geo.attributes.normal;
+    let score = 0;
+    for (let i = 0; i < nrm.count; i++) {
+      score += nrm.getX(i) * (pos.getX(i) - center.x)
+        + nrm.getY(i) * (pos.getY(i) - center.y)
+        + nrm.getZ(i) * (pos.getZ(i) - center.z);
+    }
+    if (score < 0) {
+      const idx = geo.index.array;
+      for (let i = 0; i < idx.length; i += 3) {
+        const t = idx[i + 1];
+        idx[i + 1] = idx[i + 2];
+        idx[i + 2] = t;
+      }
+      geo.index.needsUpdate = true;
+      geo.computeVertexNormals();
+    }
+  }
+
+  function buildDomeGeometry(surf) {
+    const SECT = 96, RINGS = 34;
+    const positions = [], colors = [], indices = [];
+    const v = new THREE.Vector3(), c = new THREE.Color();
+    const pushColor = (rho, x, z) => {
+      sampleStops(GRASS_STOPS, Math.pow(clamp01(rho), 1.35), c);
+      c.offsetHSL(0.004 * (fbm(x * 5.3 + 1.7, z * 5.3 - 3.1, 2) - 0.5), 0, (fbm(x * 7.7 - 2.2, z * 7.7 + 4.6, 2) - 0.5) * 0.09);
+      c.multiplyScalar(0.94 + hash2(Math.round(x * 97), Math.round(z * 97)) * 0.12);
+      colors.push(c.r, c.g, c.b);
+    };
+
+    surf.point(0, 0, v);
+    positions.push(v.x, v.y, v.z);
+    pushColor(0, v.x, v.z);
+
+    for (let i = 1; i <= RINGS; i++) {
+      const rho = i / RINGS;
+      for (let j = 0; j < SECT; j++) {
+        surf.point(rho, (j / SECT) * Math.PI * 2, v);
+        positions.push(v.x, v.y, v.z);
+        pushColor(rho, v.x, v.z);
+      }
+    }
+    const ring = (i) => 1 + (i - 1) * SECT;
+    for (let j = 0; j < SECT; j++) indices.push(0, 1 + j, 1 + ((j + 1) % SECT));
+    for (let i = 1; i < RINGS; i++) {
+      const a0 = ring(i), a1 = ring(i + 1);
+      for (let j = 0; j < SECT; j++) {
+        const j2 = (j + 1) % SECT;
+        indices.push(a0 + j, a1 + j, a0 + j2, a0 + j2, a1 + j, a1 + j2);
+      }
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+    ensureOutward(geo, new THREE.Vector3(0, DOME_H * 0.4, 0));
+    return geo;
+  }
+
+  function buildConeGeometry(seed, surf) {
+    const SECT = 96, RINGS = 30;
+    const positions = [], colors = [], indices = [];
+    const js = seed * 5.7 + 9.1;
+    const c = new THREE.Color();
+    const jagAt = (th, t) => 1 + 0.5 * (fbm(Math.cos(th) * 2.1 + js, t * 3.6 + js, 3) - 0.5) * (0.35 + 1.1 * t) * t;
+
+    for (let i = 0; i < RINGS; i++) {
+      const t = i / RINGS;
+      for (let j = 0; j < SECT; j++) {
+        const th = (j / SECT) * Math.PI * 2;
+        const rad = Math.max(0.002, (1 - Math.pow(t, 1.5)) * surf.rim(th) * jagAt(th, t));
+        const bend = t * t;
+        const x = Math.cos(th) * rad + APEX_X * bend;
+        const z = Math.sin(th) * rad + APEX_Z * bend;
+        const y = -t * CONE_DEPTH;
+        positions.push(x, y, z);
+        sampleStops(DIRT_STOPS, t, c);
+        c.multiplyScalar(0.86 + fbm(x * 4.6 + 3.3, z * 4.6 - 2.1, 2) * 0.28);
+        colors.push(c.r, c.g, c.b);
+      }
+    }
+    const apexIndex = RINGS * SECT;
+    positions.push(APEX_X, -CONE_DEPTH, APEX_Z);
+    sampleStops(DIRT_STOPS, 1, c);
+    colors.push(c.r, c.g, c.b);
+
+    for (let i = 0; i < RINGS - 1; i++) {
+      const s0 = i * SECT, s1 = (i + 1) * SECT;
+      for (let j = 0; j < SECT; j++) {
+        const j2 = (j + 1) % SECT;
+        indices.push(s0 + j, s1 + j, s0 + j2, s0 + j2, s1 + j, s1 + j2);
+      }
+    }
+    const last = (RINGS - 1) * SECT;
+    for (let j = 0; j < SECT; j++) {
+      indices.push(last + j, apexIndex, last + ((j + 1) % SECT));
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+    geo.setIndex(indices);
+    geo.computeVertexNormals();
+    ensureOutward(geo, new THREE.Vector3(0, -CONE_DEPTH * 0.45, 0));
+    return geo;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* vegetation and props                                                */
+  /* ------------------------------------------------------------------ */
+
+  const windUniform = { value: 0 };
+
+  function windify(material, strength) {
+    const amount = strength.toFixed(3);
+    material.onBeforeCompile = (shader) => {
+      shader.uniforms.uWindTime = windUniform;
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', '#include <common>\nuniform float uWindTime;')
+        .replace('#include <begin_vertex>', `#include <begin_vertex>
+#ifdef USE_INSTANCING
+  float windPhase = instanceMatrix[3][0] * 2.3 + instanceMatrix[3][2] * 1.7;
+  float windSway = sin(uWindTime * 1.6 + windPhase) * 0.6 + sin(uWindTime * 2.7 + windPhase * 1.37) * 0.25;
+  transformed.x += windSway * ${amount} * smoothstep(0.0, 0.16, position.y);
+#endif
+`);
+    };
+    material.customProgramCacheKey = () => 'wind' + amount;
+    return material;
+  }
+
+  const grassMaterial = windify(
+    new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, metalness: 0, side: THREE.DoubleSide }),
+    0.085
+  );
+  const domeMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.96, metalness: 0 });
+  const coneMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.95, metalness: 0 });
+  const rockMaterial = new THREE.MeshStandardMaterial({ color: 0x7b746d, roughness: 0.95, flatShading: true });
+
+  function makeBladeGeometry() {
+    const g = new THREE.PlaneGeometry(0.02, 0.16, 1, 4);
+    g.translate(0, 0.08, 0);
+    const p = g.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+      const y = p.getY(i);
+      const k = Math.max(0, y) / 0.16;
+      p.setZ(i, k * k * 0.07);
+      p.setX(i, p.getX(i) * (1 - k * 0.85));
+    }
+    g.computeVertexNormals();
+    return g;
+  }
+
+  function orientOnNormal(normal, rng) {
+    _q.setFromUnitVectors(UP, normal);
+    _q.premultiply(_yawQ.setFromAxisAngle(normal, rng() * Math.PI * 2));
+    return _q;
+  }
+
+  function buildGrass(count, surf, rng, nestPoint, excludeR) {
+    const mesh = new THREE.InstancedMesh(makeBladeGeometry(), grassMaterial, count);
+    mesh.castShadow = true;
+    const ex2 = excludeR * excludeR;
+    let placed = 0, guard = 0;
+    while (placed < count && guard++ < count * 25) {
+      const rho = 0.94 * Math.sqrt(rng());
+      const th = rng() * Math.PI * 2;
+      surf.point(rho, th, _p);
+      if (nestPoint && (_p.x - nestPoint.x) ** 2 + (_p.z - nestPoint.z) ** 2 < ex2) continue;
+      surf.normal(rho, th, _n);
+      orientOnNormal(_n, rng);
+      const s = 0.5 + rng() * 0.8;
+      _s.set(s * (0.75 + rng() * 0.5), s, s * (0.75 + rng() * 0.5));
+      _p.y -= 0.006;
+      _m4.compose(_p, _q, _s);
+      mesh.setMatrixAt(placed, _m4);
+      _c.copy(GRASS_COLORS[(rng() * GRASS_COLORS.length) | 0]);
+      _c.offsetHSL((rng() - 0.5) * 0.02, 0, (rng() - 0.5) * 0.05);
+      mesh.setColorAt(placed, _c);
+      placed++;
+    }
+    mesh.count = placed;
+    mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    return mesh;
+  }
+
+  function buildFlowers(surf, rng, nestPoint) {
+    const stem = new THREE.CylinderGeometry(0.0035, 0.0045, 0.05, 5);
+    stem.translate(0, 0.025, 0);
+    const head = new THREE.SphereGeometry(0.014, 8, 6);
+    head.translate(0, 0.055, 0);
+    const geo = mergeGeometries([stem, head]);
+    stem.dispose();
+    head.dispose();
+
+    const count = 46;
+    const mesh = new THREE.InstancedMesh(geo, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8 }), count);
+    const palette = [0xfff1d8, 0xffd9a8, 0xf6b8c8, 0xffe9a8, 0xe8f0ff].map((h) => new THREE.Color(h));
+    const ex2 = 0.5 * 0.5;
+    let placed = 0, guard = 0;
+    while (placed < count && guard++ < count * 25) {
+      const rho = 0.9 * Math.sqrt(rng());
+      const th = rng() * Math.PI * 2;
+      surf.point(rho, th, _p);
+      if ((_p.x - nestPoint.x) ** 2 + (_p.z - nestPoint.z) ** 2 < ex2) continue;
+      surf.normal(rho, th, _n);
+      orientOnNormal(_n, rng);
+      _s.setScalar(0.7 + rng() * 0.8);
+      _m4.compose(_p, _q, _s);
+      mesh.setMatrixAt(placed, _m4);
+      mesh.setColorAt(placed, _c.copy(palette[(rng() * palette.length) | 0]));
+      placed++;
+    }
+    mesh.count = placed;
+    mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    return mesh;
+  }
+
+  function buildRocks(surf, rng) {
+    const count = 16;
+    const mesh = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), rockMaterial, count);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    for (let i = 0; i < count; i++) {
+      const rho = 0.88 * Math.sqrt(rng());
+      const th = rng() * Math.PI * 2;
+      surf.point(rho, th, _p);
+      _p.y -= 0.02;
+      _e.set(rng() * Math.PI * 2, rng() * Math.PI * 2, rng() * Math.PI * 2);
+      _q.setFromEuler(_e);
+      const s = 0.03 + rng() * 0.055;
+      _s.set(s * (0.8 + rng() * 0.7), s * (0.55 + rng() * 0.6), s * (0.8 + rng() * 0.7));
+      _m4.compose(_p, _q, _s);
+      mesh.setMatrixAt(i, _m4);
+      mesh.setColorAt(i, _c.setHex(0x77716a).offsetHSL(0, 0, (rng() - 0.5) * 0.12));
+    }
+    mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    return mesh;
+  }
+
+  function buildMushrooms(surf, rng) {
+    const stem = new THREE.CylinderGeometry(0.008, 0.012, 0.055, 6);
+    stem.translate(0, 0.0275, 0);
+    const cap = new THREE.SphereGeometry(0.03, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2);
+    cap.scale(1, 0.62, 1);
+    cap.translate(0, 0.055, 0);
+    const geo = mergeGeometries([stem, cap]);
+    stem.dispose();
+    cap.dispose();
+
+    const count = 12;
+    const mesh = new THREE.InstancedMesh(geo, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85 }), count);
+    mesh.castShadow = true;
+    const palette = [0xe9d8b5, 0xd98a63, 0xdcd2c0, 0xc9a06a].map((h) => new THREE.Color(h));
+    for (let i = 0; i < count; i++) {
+      const rho = 0.82 * Math.sqrt(rng());
+      const th = rng() * Math.PI * 2;
+      surf.point(rho, th, _p);
+      _p.y -= 0.004;
+      orientOnNormal(UP, rng);
+      _s.setScalar(0.7 + rng() * 0.8);
+      _m4.compose(_p, _q, _s);
+      mesh.setMatrixAt(i, _m4);
+      mesh.setColorAt(i, _c.copy(palette[(rng() * palette.length) | 0]));
+    }
+    mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    return mesh;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* nest                                                                */
+  /* ------------------------------------------------------------------ */
+
+  function makeEggTexture() {
+    const c = document.createElement('canvas');
+    c.width = c.height = 256;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, 256, 256);
+    const rng = makeRng(1234);
+    for (let i = 0; i < 190; i++) {
+      const x = rng() * 256, y = rng() * 256, r = 1 + rng() * 2.6;
+      const rr = (90 + rng() * 60) | 0, gg = (70 + rng() * 50) | 0, bb = (50 + rng() * 40) | 0;
+      ctx.fillStyle = `rgba(${rr},${gg},${bb},${0.12 + rng() * 0.4})`;
+      ctx.beginPath();
+      ctx.ellipse(x, y, r, r * (0.5 + rng() * 0.8), rng() * Math.PI, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.anisotropy = 4;
+    return tex;
+  }
+
+  function makeEggGeometry() {
+    const g = new THREE.SphereGeometry(0.055, 24, 18);
+    const p = g.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+      const k = Math.max(0, p.getY(i) / 0.055);
+      const s = 1 - 0.22 * k * k;
+      p.setX(i, p.getX(i) * s);
+      p.setZ(i, p.getZ(i) * s);
+    }
+    g.computeVertexNormals();
+    return g;
+  }
+
+  const eggMaterial = new THREE.MeshPhysicalMaterial({
+    color: new THREE.Color('#f4e6cd'),
+    map: makeEggTexture(),
+    roughness: 0.5,
+    metalness: 0,
+    clearcoat: 0.3,
+    clearcoatRoughness: 0.5,
+  });
+
+  function buildTwigGeometry(count, seed) {
+    const rng = makeRng(seed * 131 + 17);
+    const palette = [0x8a6b4a, 0x74583a, 0x9c7b52, 0x655037, 0x8f7348, 0x6d744a, 0xa08456].map((h) => new THREE.Color(h));
+    const rimY = 0.21;
+    const geos = [];
+    for (let t = 0; t < count; t++) {
+      const a0 = rng() * Math.PI * 2;
+      const span = rng() < 0.22 ? 1.6 + rng() * 1.3 : 0.45 + rng() * 1.0;
+      const baseR = 0.3 + rng() * 0.11;
+      const baseY = rimY - 0.045 + rng() * 0.09;
+      const thick = 0.0075 + rng() * 0.009;
+      const lift = rng() * 0.05 - 0.012;
+      const wobble = rng() * Math.PI * 2;
+      const pts = [];
+      for (let k = 0; k <= 4; k++) {
+        const u = k / 4;
+        const a = a0 + span * u;
+        const rr = baseR + Math.sin(u * Math.PI) * (0.02 + rng() * 0.02) + (rng() - 0.5) * 0.012;
+        const yy = baseY + Math.sin(u * Math.PI) * lift + Math.sin(u * 7 + wobble) * 0.008;
+        pts.push(new THREE.Vector3(Math.cos(a) * rr, yy, Math.sin(a) * rr));
+      }
+      const geo = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 10, thick, 5, false);
+      const col = palette[(rng() * palette.length) | 0].clone();
+      col.offsetHSL(0, (rng() - 0.5) * 0.06, (rng() - 0.5) * 0.06);
+      const n = geo.attributes.position.count;
+      const arr = new Float32Array(n * 3);
+      for (let i = 0; i < n; i++) {
+        arr[i * 3] = col.r;
+        arr[i * 3 + 1] = col.g;
+        arr[i * 3 + 2] = col.b;
+      }
+      geo.setAttribute('color', new THREE.BufferAttribute(arr, 3));
+      geos.push(geo);
+    }
+    const merged = mergeGeometries(geos, false);
+    geos.forEach((g) => g.dispose());
+    return merged;
+  }
+
+  function buildBird(seed) {
+    const rng = makeRng(seed);
+    const group = new THREE.Group();
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0xc9704a, roughness: 0.72 });
+    const darkMat = new THREE.MeshStandardMaterial({ color: 0xa95536, roughness: 0.75 });
+    const creamMat = new THREE.MeshStandardMaterial({ color: 0xf2dfbf, roughness: 0.8 });
+    const beakMat = new THREE.MeshStandardMaterial({ color: 0xe08a3c, roughness: 0.55 });
+    const eyeMat = new THREE.MeshStandardMaterial({ color: 0x171310, roughness: 0.25 });
+    const sph = new THREE.SphereGeometry(1, 24, 16);
+    const add = (geo, mat, pos, scale, rot) => {
+      const m = new THREE.Mesh(geo, mat);
+      m.position.set(...pos);
+      if (scale) m.scale.set(...scale);
+      if (rot) m.rotation.set(...rot);
+      m.castShadow = true;
+      group.add(m);
+      return m;
+    };
+
+    add(sph, bodyMat, [0, 0.13, 0], [0.095, 0.085, 0.12]);
+    add(sph, creamMat, [0, 0.105, 0.028], [0.075, 0.066, 0.095]);
+
+    const head = new THREE.Group();
+    head.position.set(0, 0.2, 0.045);
+    group.add(head);
+    const headSphere = new THREE.Mesh(sph, bodyMat);
+    headSphere.position.set(0, 0.018, 0.012);
+    headSphere.scale.set(0.066, 0.064, 0.066);
+    headSphere.castShadow = true;
+    head.add(headSphere);
+    const beak = new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.055, 8), beakMat);
+    beak.position.set(0, 0.008, 0.08);
+    beak.rotation.x = Math.PI / 2;
+    head.add(beak);
+    for (const sx of [-1, 1]) {
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.011, 10, 8), eyeMat);
+      eye.position.set(sx * 0.038, 0.032, 0.048);
+      head.add(eye);
+    }
+
+    const tail = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.15, 4), darkMat);
+    tail.position.set(0, 0.15, -0.16);
+    tail.rotation.x = -1.1;
+    tail.scale.set(1, 1, 0.5);
+    tail.castShadow = true;
+    group.add(tail);
+
+    const wings = [];
+    for (const sx of [-1, 1]) {
+      const wing = new THREE.Mesh(sph, darkMat);
+      wing.position.set(sx * 0.088, 0.13, -0.005);
+      wing.scale.set(0.026, 0.055, 0.085);
+      wing.rotation.z = sx * 0.18;
+      wing.castShadow = true;
+      group.add(wing);
+      wings.push(wing);
+    }
+
+    const legGeo = new THREE.CylinderGeometry(0.006, 0.006, 0.07, 6);
+    for (const sx of [-1, 1]) {
+      const leg = new THREE.Mesh(legGeo, beakMat);
+      leg.position.set(sx * 0.028, 0.035, 0.01);
+      group.add(leg);
+    }
+
+    return { group, head, tail, wings, baseY: 0, seed };
+  }
+
+  function buildNestInto(target, opts) {
+    const { seed = 7, twigs = 110, eggs = 3, bird = true, glow = false } = opts;
+    clearGroup(target);
+    const rng = makeRng(seed * 53 + 11);
+    const rimY = 0.21;
+
+    const profile = [
+      [0, -0.04], [0.14, -0.04], [0.24, 0.0], [0.32, 0.07], [0.375, 0.14],
+      [0.395, 0.195], [0.375, rimY], [0.34, rimY], [0.315, 0.18], [0.29, 0.12],
+      [0.23, 0.075], [0.13, 0.05], [0, 0.045],
+    ].map(([r, y]) => new THREE.Vector2(r, y));
+    const bowlGeo = new THREE.LatheGeometry(profile, 56);
+    const rowCols = [0x41321f, 0x4a3924, 0x574228, 0x654d2d, 0x6f5533, 0x785c38, 0x7d6039,
+      0x7a5c36, 0x6d5230, 0x5c472b, 0x4d3c26, 0x453723, 0x41331f].map((h) => new THREE.Color(h));
+    const bc = new Float32Array(bowlGeo.attributes.position.count * 3);
+    for (let i = 0; i < bc.length / 3; i++) {
+      const cc = rowCols[i % profile.length];
+      bc[i * 3] = cc.r;
+      bc[i * 3 + 1] = cc.g;
+      bc[i * 3 + 2] = cc.b;
+    }
+    bowlGeo.setAttribute('color', new THREE.BufferAttribute(bc, 3));
+    const bowl = new THREE.Mesh(bowlGeo, new THREE.MeshStandardMaterial({
+      vertexColors: true, roughness: 1, metalness: 0, side: THREE.DoubleSide,
+    }));
+    bowl.castShadow = true;
+    bowl.receiveShadow = true;
+    target.add(bowl);
+
+    const rimGeo = new THREE.TorusGeometry(0.372, 0.028, 8, 56);
+    rimGeo.rotateX(Math.PI / 2);
+    rimGeo.scale(1, 0.75, 1);
+    const rimMesh = new THREE.Mesh(rimGeo, new THREE.MeshStandardMaterial({ color: 0x6c5133, roughness: 1 }));
+    rimMesh.position.y = rimY - 0.012;
+    rimMesh.castShadow = true;
+    target.add(rimMesh);
+
+    const floorGeo = new THREE.CircleGeometry(0.3, 40);
+    floorGeo.rotateX(-Math.PI / 2);
+    const floor = new THREE.Mesh(floorGeo, new THREE.MeshStandardMaterial({ color: 0x40522f, roughness: 1 }));
+    floor.position.y = 0.055;
+    floor.receiveShadow = true;
+    target.add(floor);
+
+    const twigMesh = new THREE.Mesh(buildTwigGeometry(twigs, seed), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 }));
+    twigMesh.castShadow = true;
+    twigMesh.receiveShadow = true;
+    target.add(twigMesh);
+
+    const tuftCount = Math.min(60, Math.round(twigs * 0.5));
+    const tufts = new THREE.InstancedMesh(makeBladeGeometry(), grassMaterial, tuftCount);
+    for (let i = 0; i < tuftCount; i++) {
+      const a = rng() * Math.PI * 2;
+      const r = 0.315 + rng() * 0.07;
+      _p.set(Math.cos(a) * r, rimY - 0.01 + rng() * 0.03, Math.sin(a) * r);
+      _n.set(Math.cos(a) * 0.35, 1, Math.sin(a) * 0.35).normalize();
+      _q.setFromUnitVectors(UP, _n);
+      _q.premultiply(_yawQ.setFromAxisAngle(_n, rng() * Math.PI * 2));
+      _s.setScalar(0.45 + rng() * 0.55);
+      _m4.compose(_p, _q, _s);
+      tufts.setMatrixAt(i, _m4);
+      _c.copy(GRASS_COLORS[(rng() * GRASS_COLORS.length) | 0]).offsetHSL(0, 0, (rng() - 0.5) * 0.06);
+      tufts.setColorAt(i, _c);
+    }
+    tufts.instanceMatrix.needsUpdate = true;
+    if (tufts.instanceColor) tufts.instanceColor.needsUpdate = true;
+    target.add(tufts);
+
+    const eggGeo = makeEggGeometry();
+    const eggGroup = new THREE.Group();
+    for (let i = 0; i < eggs; i++) {
+      const m = new THREE.Mesh(eggGeo, eggMaterial);
+      if (eggs === 1) {
+        m.position.set(0, 0.11, 0);
+      } else {
+        const a = (i / eggs) * Math.PI * 2 + 0.4;
+        m.position.set(Math.cos(a) * 0.085, 0.11 + rng() * 0.008, Math.sin(a) * 0.085);
+      }
+      m.rotation.set((rng() - 0.5) * 0.3, rng() * Math.PI * 2, (rng() - 0.5) * 0.3);
+      m.castShadow = true;
+      m.receiveShadow = true;
+      eggGroup.add(m);
+    }
+    target.add(eggGroup);
+
+    let birdRefs = null;
+    if (bird) {
+      birdRefs = buildBird(seed * 3 + 1);
+      const bAngle = 2.85;
+      birdRefs.group.position.set(Math.cos(bAngle) * 0.37, rimY + 0.01, Math.sin(bAngle) * 0.37);
+      birdRefs.group.rotation.y = -1.16;
+      birdRefs.group.scale.setScalar(0.78);
+      birdRefs.baseY = birdRefs.group.position.y;
+      target.add(birdRefs.group);
+    }
+
+    let glowLight = null;
+    if (glow) {
+      glowLight = new THREE.PointLight(0xffb066, 1.4, 3.2, 2);
+      glowLight.position.set(0, 0.14, 0);
+      target.add(glowLight);
+    }
+
+    return { bird: birdRefs, glowLight };
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* renderer, camera, scene                                             */
+  /* ------------------------------------------------------------------ */
+
+  const stage = document.getElementById('stage');
+  const boot = document.getElementById('boot');
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x0d1120);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.12;
+  stage.appendChild(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0xcfd8e3, 0.05);
+
+  const camera = new THREE.PerspectiveCamera(38, window.innerWidth / window.innerHeight, 0.05, 160);
+  camera.position.set(4.8, 3.4, 6.2);
+
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.target.set(0, 0.28, 0);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.06;
+  controls.enablePan = false;
+  controls.minDistance = 2.4;
+  controls.maxDistance = 9.5;
+  controls.minPolarAngle = 0.12;
+  controls.maxPolarAngle = Math.PI * 0.495;
+  controls.autoRotateSpeed = 0.45;
+  controls.enabled = false;
+  if (window.innerWidth / window.innerHeight < 0.85) {
+    camera.fov = 54;
+    camera.updateProjectionMatrix();
+  }
+
+  /* lights ------------------------------------------------------------ */
+
+  const sunLight = new THREE.DirectionalLight(0xffe0b0, 2.4);
+  sunLight.castShadow = true;
+  sunLight.shadow.mapSize.set(2048, 2048);
+  {
+    const sc = sunLight.shadow.camera;
+    sc.left = -4.6;
+    sc.right = 4.6;
+    sc.top = 4.6;
+    sc.bottom = -4.6;
+    sc.near = 0.5;
+    sc.far = 30;
+  }
+  sunLight.shadow.bias = -0.0002;
+  sunLight.shadow.normalBias = 0.025;
+  scene.add(sunLight);
+
+  const hemi = new THREE.HemisphereLight(0xdfeaff, 0x33281a, 0.6);
+  scene.add(hemi);
+
+  /* sky --------------------------------------------------------------- */
+
+  const skyMat = new THREE.ShaderMaterial({
+    side: THREE.BackSide,
+    depthWrite: false,
+    uniforms: {
+      uTop: { value: new THREE.Color(0x3f86d2) },
+      uHorizon: { value: new THREE.Color(0xcfe8f4) },
+      uSunColor: { value: new THREE.Color(0xffffff) },
+      uSunDir: { value: new THREE.Vector3(0, 1, 0) },
+    },
+    vertexShader: /* glsl */`
+      varying vec3 vDir;
+      void main() {
+        vDir = position;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: /* glsl */`
+      varying vec3 vDir;
+      uniform vec3 uTop, uHorizon, uSunColor, uSunDir;
+      void main() {
+        vec3 d = normalize(vDir);
+        float h = clamp(d.y, -1.0, 1.0);
+        float t = pow(clamp(h * 0.5 + 0.5, 0.0, 1.0), 1.15);
+        vec3 col = mix(uHorizon, uTop, t);
+        float sd = max(dot(d, normalize(uSunDir)), 0.0);
+        col += uSunColor * (pow(sd, 400.0) * 3.0 + pow(sd, 12.0) * 0.35 + pow(sd, 3.0) * 0.08);
+        col += uHorizon * exp(-abs(h) * 18.0) * 0.15;
+        float below = clamp(-d.y, 0.0, 1.0);
+        col = mix(col, col * 0.5 + uTop * 0.1, smoothstep(0.0, 0.5, below));
+        gl_FragColor = vec4(col, 1.0);
+      }
+    `,
+  });
+  const sky = new THREE.Mesh(new THREE.SphereGeometry(60, 32, 16), skyMat);
+  sky.renderOrder = -100;
+  scene.add(sky);
+
+  function makeSunTexture() {
+    const c = document.createElement('canvas');
+    c.width = c.height = 128;
+    const ctx = c.getContext('2d');
+    const g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+    g.addColorStop(0, 'rgba(255,255,255,1)');
+    g.addColorStop(0.25, 'rgba(255,244,220,0.85)');
+    g.addColorStop(0.6, 'rgba(255,220,170,0.25)');
+    g.addColorStop(1, 'rgba(255,210,150,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, 128, 128);
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }
+  const sunSprite = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: makeSunTexture(), color: 0xffffff, transparent: true,
+    blending: THREE.AdditiveBlending, depthWrite: false, fog: false,
+  }));
+  sunSprite.scale.setScalar(6);
+  scene.add(sunSprite);
+
+  function makeCloudTexture() {
+    const c = document.createElement('canvas');
+    c.width = 256;
+    c.height = 128;
+    const ctx = c.getContext('2d');
+    const rng = makeRng(99);
+    for (let i = 0; i < 16; i++) {
+      const x = 40 + rng() * 176, y = 46 + rng() * 44, r = 18 + rng() * 36;
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, 'rgba(255,255,255,0.55)');
+      g.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }
+  const cloudMaterial = new THREE.SpriteMaterial({
+    map: makeCloudTexture(), transparent: true, opacity: 0.4, depthWrite: false, fog: false,
+  });
+  const cloudData = [];
+  {
+    const rng = makeRng(777);
+    for (let i = 0; i < 9; i++) {
+      const sp = new THREE.Sprite(cloudMaterial);
+      const a = (i / 9) * Math.PI * 2 + rng() * 0.6;
+      const r = 15 + rng() * 14;
+      sp.position.set(Math.cos(a) * r, 4.5 + rng() * 6.5, Math.sin(a) * r);
+      const s = 7 + rng() * 9;
+      sp.scale.set(s, s * 0.42, 1);
+      scene.add(sp);
+      cloudData.push({ sp, a, r, speed: 0.002 + rng() * 0.003 });
+    }
+  }
+
+  /* post processing --------------------------------------------------- */
+
+  const composer = new EffectComposer(renderer);
+  composer.addPass(new RenderPass(scene, camera));
+
+  const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.55, 0.55, 0.82);
+  composer.addPass(bloomPass);
+  composer.addPass(new OutputPass());
+
+  const GradeShader = {
+    uniforms: {
+      tDiffuse: { value: null },
+      uTime: { value: 0 },
+      uVignette: { value: 0.35 },
+      uGrain: { value: 0.3 },
+      uAberration: { value: 0.35 },
+    },
+    vertexShader: /* glsl */`
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: /* glsl */`
+      uniform sampler2D tDiffuse;
+      uniform float uTime, uVignette, uGrain, uAberration;
+      varying vec2 vUv;
+      void main() {
+        vec2 uv = vUv;
+        vec2 c = uv - 0.5;
+        float r2 = dot(c, c);
+        vec2 shift = c * r2 * uAberration * 0.012;
+        vec3 col;
+        col.r = texture2D(tDiffuse, uv + shift).r;
+        col.g = texture2D(tDiffuse, uv).g;
+        col.b = texture2D(tDiffuse, uv - shift).b;
+        col *= 1.0 - smoothstep(0.16, 0.95, r2 * 1.7) * uVignette;
+        float grain = fract(sin(dot(uv * vec2(1234.5, 651.2) + uTime * 37.0, vec2(12.9898, 78.233))) * 43758.5453);
+        col += (grain - 0.5) * uGrain * 0.06;
+        col = col * vec3(1.015, 1.0, 0.985);
+        float luma = dot(col, vec3(0.299, 0.587, 0.114));
+        col = mix(vec3(luma), col, 1.1);
+        col += (fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453) - 0.5) / 255.0;
+        gl_FragColor = vec4(col, 1.0);
+      }
+    `,
+  };
+  const gradePass = new ShaderPass(GradeShader);
+  composer.addPass(gradePass);
+
+  /* ------------------------------------------------------------------ */
+  /* world assembly                                                      */
+  /* ------------------------------------------------------------------ */
+
+  const params = {
+    timeOfDay: 16.6,
+    bobSpeed: 1,
+    exposure: 1.14,
+    fogDensity: 0.035,
+    seed: 7,
+    grass: 900,
+    islandScale: ISLAND_SCALE,
+    twigs: 110,
+    eggs: 3,
+    eggColor: '#f4e6cd',
+    showBird: true,
+    birdActivity: 1,
+    fireflies: 140,
+    feathers: 50,
+    bloom: 0.55,
+    grain: 0.3,
+    vignette: 0.35,
+    aberration: 0.35,
+    autoOrbit: false,
+  };
+
+  const sharedMats = new Set([domeMaterial, coneMaterial, grassMaterial, eggMaterial, rockMaterial]);
+
+  function disposeTree(obj) {
+    obj.traverse((o) => {
+      if (o.isMesh || o.isPoints || o.isSprite) {
+        if (o.geometry) o.geometry.dispose();
+        if (o.material) {
+          const mats = Array.isArray(o.material) ? o.material : [o.material];
+          for (const m of mats) {
+            if (!sharedMats.has(m)) {
+              if (m.map && m.map !== eggMaterial.map) m.map.dispose();
+              m.dispose();
+            }
+          }
+        }
+      }
+    });
+  }
+
+  function clearGroup(g) {
+    while (g.children.length) {
+      const child = g.children.pop();
+      disposeTree(child);
+    }
+  }
+
+  const island = new THREE.Group();
+  island.scale.setScalar(params.islandScale);
+  scene.add(island);
+
+  const nestGroup = new THREE.Group();
+  island.add(nestGroup);
+
+  let currentSurf = null;
+  let grassMesh = null;
+  let nestRefs = null;
+  let nestGlow = null;
+
+  function rebuildIsland() {
+    if (grassMesh) grassMesh = null;
+    island.remove(nestGroup);
+    for (let i = island.children.length - 1; i >= 0; i--) {
+      const child = island.children[i];
+      island.remove(child);
+      disposeTree(child);
+    }
+
+    const surf = makeSurface(params.seed);
+    currentSurf = surf;
+
+    const dome = new THREE.Mesh(buildDomeGeometry(surf), domeMaterial);
+    dome.castShadow = true;
+    dome.receiveShadow = true;
+    island.add(dome);
+
+    const cone = new THREE.Mesh(buildConeGeometry(params.seed, surf), coneMaterial);
+    cone.castShadow = true;
+    cone.receiveShadow = true;
+    island.add(cone);
+
+    const rng = makeRng(params.seed * 999 + 13);
+    const nestPoint = surf.point(NEST_RHO, NEST_THETA, new THREE.Vector3());
+
+    grassMesh = buildGrass(params.grass, surf, rng, nestPoint, 0.52);
+    island.add(grassMesh);
+    island.add(buildFlowers(surf, rng, nestPoint));
+    island.add(buildRocks(surf, rng));
+    island.add(buildMushrooms(surf, rng));
+
+    nestGroup.position.copy(nestPoint);
+    nestGroup.position.y -= 0.01;
+    nestGroup.rotation.y = 0.25;
+    island.add(nestGroup);
+  }
+
+  function rebuildGrass() {
+    if (!currentSurf) return;
+    if (grassMesh) {
+      island.remove(grassMesh);
+      disposeTree(grassMesh);
+      grassMesh = null;
+    }
+    const rng = makeRng(params.seed * 999 + 13);
+    grassMesh = buildGrass(params.grass, currentSurf, rng, nestGroup.position, 0.52);
+    island.add(grassMesh);
+  }
+
+  function rebuildNest() {
+    const refs = buildNestInto(nestGroup, {
+      seed: params.seed + 40,
+      twigs: params.twigs,
+      eggs: params.eggs,
+      bird: params.showBird,
+      glow: true,
+    });
+    nestRefs = refs;
+    nestGlow = refs.glowLight;
+  }
+
+  /* background islets -------------------------------------------------- */
+
+  const islets = [];
+  [211, 377, 523, 689, 811, 947].forEach((seed, i) => {
+    const surf = makeSurface(seed);
+    const g = new THREE.Group();
+    g.add(new THREE.Mesh(buildDomeGeometry(surf), domeMaterial));
+    g.add(new THREE.Mesh(buildConeGeometry(seed, surf), coneMaterial));
+
+    const nest = new THREE.Group();
+    buildNestInto(nest, { seed: seed + 9, twigs: 26, eggs: 2, bird: false, glow: false });
+    nest.position.copy(surf.point(0.15, 1.1 + i * 0.4));
+    nest.position.y -= 0.02;
+    g.add(nest);
+
+    const rng = makeRng(seed * 3 + 1);
+    const angle = [0.5, 0.92, 1.35, 0.15, 1.78, 3.6][i] + (rng() - 0.5) * 0.12;
+    const radius = 4.6 + rng() * 2.8;
+    const baseY = 0.2 + rng() * 2.0;
+    g.scale.setScalar(0.3 + rng() * 0.22);
+    g.scale.y *= 0.8;
+    g.position.set(Math.cos(angle) * radius, baseY, Math.sin(angle) * radius);
+    g.rotation.y = rng() * Math.PI * 2;
+    scene.add(g);
+    islets.push({
+      g, angle, radius, baseY,
+      phase: rng() * Math.PI * 2,
+      speed: 0.05 + rng() * 0.04,
+      spin: (rng() - 0.5) * 0.1,
+    });
+  });
+
+  /* floating rocks ------------------------------------------------------ */
+
+  const floatRocks = [];
+  {
+    const geo = new THREE.IcosahedronGeometry(1, 0);
+    const mat = new THREE.MeshStandardMaterial({ color: 0x837b72, roughness: 0.95, flatShading: true });
+    const rng = makeRng(313);
+    for (let i = 0; i < 12; i++) {
+      const m = new THREE.Mesh(geo, mat);
+      const s = 0.035 + rng() * 0.075;
+      m.scale.set(s * (0.8 + rng() * 0.7), s * (0.6 + rng() * 0.7), s * (0.8 + rng() * 0.7));
+      m.rotation.set(rng() * 6.28, rng() * 6.28, rng() * 6.28);
+      scene.add(m);
+      floatRocks.push({
+        m,
+        angle: rng() * 6.28,
+        radius: 2.6 + rng() * 1.0,
+        baseY: -0.2 + rng() * 1.4,
+        phase: rng() * 6.28,
+        speed: 0.06 + rng() * 0.1,
+        spin: (rng() - 0.5) * 0.6,
+      });
+    }
+  }
+
+  /* fireflies ------------------------------------------------------------ */
+
+  const fireflyUniforms = {
+    uTime: { value: 0 },
+    uPixelRatio: { value: Math.min(window.devicePixelRatio, 2) },
+    uIntensity: { value: 1.5 },
+    uColor: { value: new THREE.Color(0xffd27a) },
+  };
+  const fireflyMaterial = new THREE.ShaderMaterial({
+    uniforms: fireflyUniforms,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    vertexShader: /* glsl */`
+      uniform float uTime, uPixelRatio;
+      attribute float aPhase, aSpeed, aSize;
+      varying float vTwinkle;
+      void main() {
+        vec3 p = position;
+        p.x += sin(uTime * aSpeed + aPhase) * 0.22;
+        p.y += sin(uTime * aSpeed * 0.63 + aPhase * 1.7) * 0.18;
+        p.z += cos(uTime * aSpeed * 0.81 + aPhase * 0.6) * 0.22;
+        vec4 mv = modelViewMatrix * vec4(p, 1.0);
+        gl_Position = projectionMatrix * mv;
+        gl_PointSize = aSize * uPixelRatio * (34.0 / max(0.1, -mv.z));
+        vTwinkle = 0.35 + 0.65 * pow(0.5 + 0.5 * sin(uTime * (1.2 + aSpeed) + aPhase * 3.0), 2.0);
+      }
+    `,
+    fragmentShader: /* glsl */`
+      uniform vec3 uColor;
+      uniform float uIntensity;
+      varying float vTwinkle;
+      void main() {
+        vec2 uv = gl_PointCoord - 0.5;
+        float d = length(uv);
+        float core = smoothstep(0.5, 0.0, d);
+        float glow = pow(core, 2.5);
+        gl_FragColor = vec4(uColor * (glow * 1.6 + core * 0.5) * vTwinkle * uIntensity, core * vTwinkle);
+      }
+    `,
+  });
+  let fireflies = null;
+
+  function buildFireflies(count) {
+    if (fireflies) {
+      scene.remove(fireflies);
+      fireflies.geometry.dispose();
+      fireflies = null;
+    }
+    if (!count) return;
+    const rng = makeRng(4242);
+    const pos = new Float32Array(count * 3);
+    const phase = new Float32Array(count);
+    const speed = new Float32Array(count);
+    const size = new Float32Array(count);
+    for (let i = 0; i < count; i++) {
+      const a = rng() * Math.PI * 2;
+      const r = 1.15 + rng() * 2.3;
+      pos[i * 3] = Math.cos(a) * r;
+      pos[i * 3 + 1] = -0.35 + rng() * 2.4;
+      pos[i * 3 + 2] = Math.sin(a) * r;
+      phase[i] = rng() * Math.PI * 2;
+      speed[i] = 0.3 + rng() * 0.9;
+      size[i] = 0.7 + rng() * 1.4;
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute('aPhase', new THREE.BufferAttribute(phase, 1));
+    geo.setAttribute('aSpeed', new THREE.BufferAttribute(speed, 1));
+    geo.setAttribute('aSize', new THREE.BufferAttribute(size, 1));
+    fireflies = new THREE.Points(geo, fireflyMaterial);
+    fireflies.frustumCulled = false;
+    scene.add(fireflies);
+  }
+
+  /* drifting feathers ---------------------------------------------------- */
+
+  function makeFeatherGeometry() {
+    const shape = new THREE.Shape();
+    shape.moveTo(0, 0);
+    shape.quadraticCurveTo(0.05, 0.06, 0.028, 0.15);
+    shape.quadraticCurveTo(0.012, 0.18, 0, 0.19);
+    shape.quadraticCurveTo(-0.012, 0.18, -0.028, 0.15);
+    shape.quadraticCurveTo(-0.05, 0.06, 0, 0);
+    return new THREE.ShapeGeometry(shape, 8);
+  }
+
+  let feathers = null;
+  let featherState = [];
+
+  function buildFeathers(count) {
+    if (feathers) {
+      scene.remove(feathers);
+      feathers.geometry.dispose();
+      feathers.material.dispose();
+      feathers = null;
+      featherState = [];
+    }
+    if (!count) return;
+    const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, side: THREE.DoubleSide, roughness: 0.9 });
+    feathers = new THREE.InstancedMesh(makeFeatherGeometry(), mat, count);
+    feathers.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    const rng = makeRng(808);
+    const palette = [0xf3e7d0, 0xe8d9b8, 0xd99f74, 0xf0c98f, 0xc97a52, 0xe6cfa4].map((h) => new THREE.Color(h));
+    for (let i = 0; i < count; i++) {
+      featherState.push({
+        angle0: rng() * Math.PI * 2,
+        r0: 1.4 + rng() * 1.6,
+        y0: rng() * 3.8,
+        fall: 0.12 + rng() * 0.3,
+        dir: rng() < 0.5 ? 1 : -1,
+        sway: 0.08 + rng() * 0.15,
+        phase: rng() * Math.PI * 2,
+        spinX: (rng() - 0.5) * 1.2,
+        spinY: (rng() - 0.5) * 1.2,
+        spinZ: (rng() - 0.5) * 0.8,
+        scale: 0.4 + rng() * 0.55,
+      });
+      feathers.setColorAt(i, _c.copy(palette[(rng() * palette.length) | 0]));
+    }
+    if (feathers.instanceColor) feathers.instanceColor.needsUpdate = true;
+    scene.add(feathers);
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* time of day                                                         */
+  /* ------------------------------------------------------------------ */
+
+  const skyStops = [
+    { h: 0.0, top: new THREE.Color(0x070b1e), horizon: new THREE.Color(0x131c3a), sun: new THREE.Color(0x9db2ff) },
+    { h: 4.2, top: new THREE.Color(0x0a1030), horizon: new THREE.Color(0x1c2749), sun: new THREE.Color(0x9db2ff) },
+    { h: 5.6, top: new THREE.Color(0x1d2f5e), horizon: new THREE.Color(0x6b5473), sun: new THREE.Color(0xffb98a) },
+    { h: 6.6, top: new THREE.Color(0x33538f), horizon: new THREE.Color(0xf2a47a), sun: new THREE.Color(0xffcf9a) },
+    { h: 8.2, top: new THREE.Color(0x4a82c4), horizon: new THREE.Color(0xf3e3cb), sun: new THREE.Color(0xfff2d8) },
+    { h: 12.0, top: new THREE.Color(0x3f86d2), horizon: new THREE.Color(0xcfe8f4), sun: new THREE.Color(0xffffff) },
+    { h: 15.5, top: new THREE.Color(0x527bbd), horizon: new THREE.Color(0xf7d9a8), sun: new THREE.Color(0xfff0c4) },
+    { h: 17.4, top: new THREE.Color(0x3c3f78), horizon: new THREE.Color(0xffa068), sun: new THREE.Color(0xffcf82) },
+    { h: 18.6, top: new THREE.Color(0x1d2350), horizon: new THREE.Color(0xa2607a), sun: new THREE.Color(0xffa06e) },
+    { h: 20.0, top: new THREE.Color(0x0d1333), horizon: new THREE.Color(0x2e3460), sun: new THREE.Color(0xb0a4ff) },
+    { h: 22.0, top: new THREE.Color(0x080d22), horizon: new THREE.Color(0x162040), sun: new THREE.Color(0x9db2ff) },
+    { h: 24.0, top: new THREE.Color(0x070b1e), horizon: new THREE.Color(0x131c3a), sun: new THREE.Color(0x9db2ff) },
+  ];
+  const colTop = new THREE.Color();
+  const colHorizon = new THREE.Color();
+  const colSun = new THREE.Color();
+  const _sunDir = new THREE.Vector3();
+  const _lightDir = new THREE.Vector3();
+
+  function lerpStop(key, h, out) {
+    let i = 1;
+    while (i < skyStops.length - 1 && skyStops[i].h <= h) i++;
+    const a = skyStops[i - 1], b = skyStops[i];
+    const k = clamp01((h - a.h) / (b.h - a.h));
+    return out.copy(a[key]).lerp(b[key], k);
+  }
+
+  function updateSky() {
+    const h = params.timeOfDay;
+    lerpStop('top', h, colTop);
+    lerpStop('horizon', h, colHorizon);
+    lerpStop('sun', h, colSun);
+
+    const e = ((h - 6) / 12) * Math.PI;
+    _sunDir.set(Math.cos(e), Math.sin(e) * 0.92, 0.36).normalize();
+    const sunUp = Math.sin(e);
+    const day = smoothstep(sunUp, -0.03, 0.28);
+
+    skyMat.uniforms.uTop.value.copy(colTop);
+    skyMat.uniforms.uHorizon.value.copy(colHorizon);
+    skyMat.uniforms.uSunColor.value.copy(colSun);
+    skyMat.uniforms.uSunDir.value.copy(_sunDir);
+
+    _lightDir.copy(_sunDir);
+    if (_lightDir.y < 0.18) _lightDir.y = 0.18;
+    _lightDir.normalize();
+    sunLight.position.copy(_lightDir).multiplyScalar(9);
+    sunLight.intensity = 0.24 + 2.5 * Math.pow(Math.max(sunUp, 0), 0.75);
+    sunLight.color.copy(colSun).lerp(WHITE, 0.25 + 0.7 * smoothstep(sunUp, 0.02, 0.5));
+
+    hemi.color.copy(colHorizon);
+    hemi.intensity = 0.38 + 0.5 * day;
+
+    scene.fog.color.copy(colHorizon).lerp(colTop, 0.25);
+    scene.fog.density = params.fogDensity;
+
+    sunSprite.material.color.copy(colSun).lerp(WHITE, 0.4);
+    sunSprite.position.copy(_sunDir).multiplyScalar(46);
+    sunSprite.material.opacity = 0.05 + 0.85 * day;
+    sunSprite.scale.setScalar(5 + 3 * day);
+
+    cloudMaterial.color.copy(colHorizon).lerp(WHITE, 0.25 + 0.45 * day);
+    cloudMaterial.opacity = 0.2 + 0.3 * day;
+
+    fireflyUniforms.uIntensity.value = 0.25 + 1.7 * (1 - day);
+    if (nestGlow) nestGlow.intensity = 0.05 + 0.85 * (1 - day);
+    renderer.toneMappingExposure = params.exposure * (0.9 + 0.2 * day);
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* animation                                                           */
+  /* ------------------------------------------------------------------ */
+
+  function updateBird(t) {
+    if (!nestRefs || !nestRefs.bird) return;
+    const b = nestRefs.bird;
+    const act = params.birdActivity;
+    b.group.position.y = b.baseY + Math.sin(t * 2.1) * 0.006 * act;
+    b.head.rotation.y = Math.sin(t * 0.55) * Math.sin(t * 0.23 + 1.4) * 0.55 * Math.min(1, act);
+    b.head.rotation.x = Math.sin(t * 1.35 + 2.1) * 0.06 * act;
+    b.tail.rotation.x = -1.1 + Math.sin(t * 2.6) * 0.08 * act;
+    for (let i = 0; i < b.wings.length; i++) {
+      b.wings[i].rotation.z = (i === 0 ? -1 : 1) * (0.18 + Math.sin(t * 1.35 + i * 1.7) * 0.03 * act);
+    }
+  }
+
+  function updateFeathers(t) {
+    if (!feathers) return;
+    for (let i = 0; i < featherState.length; i++) {
+      const f = featherState[i];
+      const y = (((f.y0 - t * f.fall) % 4.2) + 4.2) % 4.2 - 0.5;
+      const a = f.angle0 + t * 0.03 * f.dir;
+      const r = f.r0 + Math.sin(t * 0.5 + f.phase) * f.sway;
+      _p.set(Math.cos(a) * r, y, Math.sin(a) * r);
+      _e.set(t * f.spinX + f.phase, t * f.spinY, t * f.spinZ);
+      _q.setFromEuler(_e);
+      _s.setScalar(f.scale);
+      _m4.compose(_p, _q, _s);
+      feathers.setMatrixAt(i, _m4);
+    }
+    feathers.instanceMatrix.needsUpdate = true;
+  }
+
+  const clock = new THREE.Clock();
+  let elapsed = 0;
+  let booted = false;
+
+  const intro = {
+    active: true,
+    t0: performance.now(),
+    from: camera.position.clone(),
+    to: new THREE.Vector3(3.15, 3.15, 4.05),
+    dur: 2600,
+  };
+  renderer.domElement.addEventListener('pointerdown', () => {
+    if (intro.active) intro.t0 -= intro.dur;
+  });
+
+  function animate() {
+    const dt = Math.min(clock.getDelta(), 0.05);
+    elapsed += dt;
+    const t = elapsed;
+
+    windUniform.value = t;
+    fireflyUniforms.uTime.value = t;
+    gradePass.uniforms.uTime.value = t;
+
+    island.position.y = Math.sin(t * 0.55) * 0.055 * params.bobSpeed;
+    island.rotation.z = Math.sin(t * 0.31) * 0.006 * params.bobSpeed;
+    island.rotation.x = Math.cos(t * 0.27) * 0.005 * params.bobSpeed;
+
+    for (const it of islets) {
+      it.angle += dt * it.speed * 0.06;
+      it.g.position.set(
+        Math.cos(it.angle) * it.radius,
+        it.baseY + Math.sin(t * 0.4 + it.phase) * 0.14,
+        Math.sin(it.angle) * it.radius
+      );
+      it.g.rotation.y += dt * it.spin;
+    }
+
+    for (const r of floatRocks) {
+      const a = r.angle + t * r.speed * 0.25;
+      r.m.position.set(
+        Math.cos(a) * r.radius,
+        r.baseY + Math.sin(t * 0.5 + r.phase) * 0.12,
+        Math.sin(a) * r.radius
+      );
+      r.m.rotation.x += dt * r.spin;
+      r.m.rotation.y += dt * r.spin * 0.7;
+    }
+
+    for (const c of cloudData) {
+      c.a += dt * c.speed;
+      c.sp.position.x = Math.cos(c.a) * c.r;
+      c.sp.position.z = Math.sin(c.a) * c.r;
+    }
+
+    updateBird(t);
+    updateFeathers(t);
+
+    if (intro.active) {
+      const k = clamp01((performance.now() - intro.t0) / intro.dur);
+      const ease = 1 - Math.pow(1 - k, 3);
+      camera.position.lerpVectors(intro.from, intro.to, ease);
+      camera.lookAt(controls.target);
+      if (k >= 1) {
+        intro.active = false;
+        controls.enabled = true;
+        controls.update();
+      }
+    } else {
+      controls.update();
+    }
+
+    composer.render();
+
+    if (!booted) {
+      booted = true;
+      window.__nestReady = true;
+      boot.classList.add('done');
+      setTimeout(() => boot.remove(), 1200);
+    }
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* build world & GUI                                                   */
+  /* ------------------------------------------------------------------ */
+
+  buildFireflies(params.fireflies);
+  buildFeathers(params.feathers);
+  rebuildIsland();
+  rebuildNest();
+  updateSky();
+  bloomPass.strength = params.bloom;
+  gradePass.uniforms.uGrain.value = params.grain;
+  gradePass.uniforms.uVignette.value = params.vignette;
+  gradePass.uniforms.uAberration.value = params.aberration;
+
+  const gui = new GUI({ title: 'Nest · settings', width: 296 });
+
+  const fScene = gui.addFolder('Scene');
+  const timeCtrl = fScene.add(params, 'timeOfDay', 0, 24, 0.05).name('Time of day').onChange(updateSky);
+  fScene.add(params, 'bobSpeed', 0, 2, 0.01).name('Island bob');
+  fScene.add(params, 'exposure', 0.5, 2, 0.01).name('Exposure').onChange(updateSky);
+  fScene.add(params, 'fogDensity', 0, 0.12, 0.001).name('Fog').onChange((v) => { scene.fog.density = v; });
+  const presetFolder = fScene.addFolder('Presets').close();
+  const presets = { Dawn: 6.4, Morning: 9, Noon: 12.5, 'Golden hour': 16.6, Sunset: 18.1, Night: 22.5 };
+  for (const [name, hour] of Object.entries(presets)) {
+    presetFolder.add({
+      go: () => {
+        params.timeOfDay = hour;
+        updateSky();
+        timeCtrl.updateDisplay();
+      },
+    }, 'go').name(name);
+  }
+
+  const fIsland = gui.addFolder('Island');
+  fIsland.add(params, 'seed', 1, 999, 1).name('Shape seed').onChange(rebuildIsland);
+  fIsland.add({
+    regenerate: () => {
+      params.seed = 1 + Math.floor(Math.random() * 999);
+      rebuildIsland();
+      gui.controllersRecursive().forEach((c) => c.updateDisplay());
+    },
+  }, 'regenerate').name('New island');
+  fIsland.add(params, 'grass', 150, 2400, 50).name('Grass blades').onChange(rebuildGrass);
+  fIsland.add(params, 'islandScale', 1.1, 2.2, 0.01).name('Size').onChange((v) => island.scale.setScalar(v));
+
+  const fNest = gui.addFolder('Nest');
+  fNest.add(params, 'twigs', 30, 220, 10).name('Twigs').onChange(rebuildNest);
+  fNest.add(params, 'eggs', 1, 4, 1).name('Eggs').onChange(rebuildNest);
+  fNest.addColor(params, 'eggColor').name('Egg tint').onChange((v) => eggMaterial.color.set(v));
+  fNest.add(params, 'showBird').name('Bird').onChange(rebuildNest);
+  fNest.add(params, 'birdActivity', 0, 2, 0.01).name('Bird liveliness');
+
+  const fFx = gui.addFolder('Atmosphere');
+  fFx.add(params, 'fireflies', 0, 400, 10).name('Fireflies').onChange(buildFireflies);
+  fFx.add(params, 'feathers', 0, 150, 5).name('Drifting feathers').onChange(buildFeathers);
+  fFx.add(params, 'bloom', 0, 2, 0.01).name('Bloom').onChange((v) => { bloomPass.strength = v; });
+  fFx.add(params, 'grain', 0, 1, 0.01).name('Grain').onChange((v) => { gradePass.uniforms.uGrain.value = v; });
+  fFx.add(params, 'vignette', 0, 1, 0.01).name('Vignette').onChange((v) => { gradePass.uniforms.uVignette.value = v; });
+  fFx.add(params, 'aberration', 0, 1, 0.01).name('Aberration').onChange((v) => { gradePass.uniforms.uAberration.value = v; });
+
+  const fCam = gui.addFolder('Camera');
+  fCam.add(params, 'autoOrbit').name('Auto orbit').onChange((v) => { controls.autoRotate = v; });
+  fCam.add({
+    reset: () => {
+      camera.position.set(3.15, 3.15, 4.05);
+      controls.target.set(0, 0.28, 0);
+      controls.update();
+    },
+  }, 'reset').name('Reset view');
+
+  fIsland.close();
+  fNest.close();
+  fFx.close();
+  fCam.close();
+  if (window.innerWidth < 700) gui.close();
+
+  window.addEventListener('resize', () => {
+    const aspect = window.innerWidth / window.innerHeight;
+    camera.aspect = aspect;
+    camera.fov = aspect < 0.85 ? 54 : 38;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    composer.setSize(window.innerWidth, window.innerHeight);
+    fireflyUniforms.uPixelRatio.value = Math.min(window.devicePixelRatio, 2);
+  });
+
+  renderer.setAnimationLoop(animate);
+  </script>
+</body>
+</html>
