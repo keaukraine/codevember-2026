@@ -4,34 +4,42 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>25 — Veil · Codevember 2026</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23050505'/%3E%3Cpath d='M32 10c7 0 9 6 9 11 0 10 6 13 10 33H13c4-20 10-23 10-33 0-5 2-11 9-11z' fill='%23e8e8e8'/%3E%3Cpath d='M23 45c4 2 14 2 18 0' stroke='%23050505' stroke-width='1.2' fill='none'/%3E%3C/svg%3E">
   <style>
     :root { color-scheme: dark; }
     * { box-sizing: border-box; }
     html, body { height: 100%; }
     body {
       margin: 0;
-      display: grid;
-      grid-template-rows: auto 1fr;
-      background: #6a6a6a;
+      overflow: hidden;
+      background: #000;
       color: #fff;
       font: 16px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
     }
     header {
+      position: fixed;
+      inset: 0 0 auto 0;
+      z-index: 20;
       display: flex;
       flex-wrap: wrap;
       align-items: center;
       gap: .5rem 1.75rem;
-      padding: 1.25rem clamp(1rem, 4vw, 2.5rem);
+      padding: 1.15rem clamp(1rem, 4vw, 2.5rem) 2.6rem;
+      pointer-events: none;
+      text-shadow: 0 1px 18px rgb(0 0 0 / .9), 0 0 2px rgb(0 0 0 / .8);
+      background: linear-gradient(180deg, rgb(0 0 0 / .55), rgb(0 0 0 / 0));
     }
     .nav {
       color: #fff;
       text-decoration: none;
-      opacity: .75;
+      opacity: .72;
       white-space: nowrap;
       transition: opacity .15s;
+      pointer-events: auto;
     }
     .nav:hover, .nav:focus-visible { opacity: 1; }
-    .nav .num { font-variant-numeric: tabular-nums; opacity: .6; }
+    .nav .num { font-variant-numeric: tabular-nums; opacity: .58; }
     h1 {
       margin: 0;
       font-size: clamp(1rem, 2.5vw, 1.25rem);
@@ -47,20 +55,102 @@
       letter-spacing: .18em;
       opacity: .6;
     }
-    main {
+    main { position: fixed; inset: 0; }
+    main canvas { display: block; width: 100%; height: 100%; }
+    a:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+    #hint {
+      position: fixed;
+      left: 50%;
+      bottom: 20px;
+      transform: translateX(-50%);
+      z-index: 15;
+      padding: .55rem 1.05rem;
+      border-radius: 999px;
+      background: rgb(0 0 0 / .38);
+      border: 1px solid rgb(255 255 255 / .09);
+      color: rgb(255 255 255 / .8);
+      font-size: .7rem;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      backdrop-filter: blur(8px);
+      pointer-events: none;
+      transition: opacity 1.6s ease;
+      white-space: nowrap;
+    }
+    #hint.gone { opacity: 0; }
+    #hint b { font-weight: 500; color: #fff; }
+    #boot {
+      position: fixed;
+      inset: 0;
+      z-index: 60;
       display: grid;
       place-items: center;
       padding: 2rem;
+      text-align: center;
+      background: #000;
+      transition: opacity 1.2s ease;
     }
-    .placeholder {
-      margin: 0;
-      padding: clamp(2rem, 6vw, 4rem) clamp(2.5rem, 10vw, 7rem);
-      border: 1px dashed rgb(255 255 255 / .35);
-      font-size: clamp(1.25rem, 3vw, 1.75rem);
-      font-weight: 600;
-      letter-spacing: .02em;
+    #boot.done { opacity: 0; pointer-events: none; }
+    .boot-inner { display: grid; justify-items: center; gap: .85rem; }
+    .boot-kicker {
+      font-size: .68rem;
+      letter-spacing: .34em;
+      text-transform: uppercase;
+      color: #666;
     }
-    a:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+    .boot-title {
+      font-size: clamp(2rem, 7vw, 3.2rem);
+      font-weight: 300;
+      letter-spacing: .42em;
+      text-indent: .42em;
+      color: #e8e8e8;
+    }
+    .boot-line {
+      width: 190px;
+      height: 1px;
+      margin: .4rem 0 .2rem;
+      overflow: hidden;
+      background: rgb(255 255 255 / .1);
+    }
+    .boot-line i {
+      display: block;
+      width: 40%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgb(255 255 255 / .8), transparent);
+      animation: sweep 1.9s cubic-bezier(.6, 0, .4, 1) infinite;
+    }
+    @keyframes sweep {
+      0% { transform: translateX(-120%); }
+      100% { transform: translateX(340%); }
+    }
+    #boot small {
+      font-size: .72rem;
+      letter-spacing: .08em;
+      color: #555;
+      max-width: 34ch;
+    }
+    #boot.err .boot-line i { animation: none; background: rgb(255 255 255 / .45); }
+    .lil-gui.autoPlace { top: 66px; right: 18px; z-index: 30; }
+    .lil-gui {
+      --font-size: 12px;
+      --input-font-size: 11px;
+      --widget-height: 23px;
+      --title-background-color: rgb(10 10 10 / .92);
+      --background-color: rgb(8 8 8 / .94);
+      --widget-color: rgb(26 26 26);
+      --hover-color: rgb(38 38 38);
+      --focus-color: rgb(52 52 52);
+      --number-color: #ddd;
+      --string-color: #aaa;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgb(255 255 255 / .07);
+    }
+    .lil-gui .title { border-bottom: 1px solid rgb(255 255 255 / .07); }
+    @media (max-width: 760px) {
+      header { gap: .3rem .9rem; padding-bottom: 1.9rem; }
+      #hint { display: none; }
+      .lil-gui.autoPlace { top: auto; bottom: 12px; left: 12px; right: 12px; width: auto; }
+    }
   </style>
 </head>
 <body>
@@ -69,8 +159,1773 @@
     <h1><span class="day">Day 25 of 30</span> Veil</h1>
     <a class="nav next" href="../26/index.html" rel="next"><span class="num">26</span> Anamorph <span class="arrow" aria-hidden="true">→</span></a>
   </header>
-  <main>
-    <p class="placeholder">Nothing here</p>
-  </main>
+
+  <main id="stage"></main>
+
+  <div id="hint"><b>Drag the veil</b> · drag the room to orbit · <b>R</b> drops it again</div>
+
+  <div id="boot">
+    <div class="boot-inner">
+      <div class="boot-kicker">Codevember 2026 · Day 25</div>
+      <div class="boot-title">Veil</div>
+      <div class="boot-line"><i></i></div>
+      <small>loading three.js &amp; ammo.js…</small>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/gh/kripken/ammo.js@c8779e60159d428f11ff1eb553dc9b6b6e2d317a/builds/ammo.wasm.js"
+          onerror="window.__ammoLoadError = true"></script>
+
+  <script>
+    (function () {
+      var boot = document.getElementById('boot');
+      function fail(msg) {
+        if (!boot) return;
+        boot.classList.add('err');
+        boot.classList.remove('done');
+        boot.innerHTML = '<div class="boot-inner"><div class="boot-kicker">Codevember 2026 · Day 25</div>'
+          + '<div class="boot-title">Veil</div><div class="boot-line"><i></i></div>'
+          + '<small></small></div>';
+        boot.querySelector('small').textContent = String(msg || 'Unknown error');
+      }
+      window.__veilFail = fail;
+      window.addEventListener('error', function (e) {
+        fail(e.error && e.error.message ? e.error.message : e.message);
+      });
+      window.addEventListener('unhandledrejection', function (e) {
+        fail(e.reason && e.reason.message ? e.reason.message : e.reason);
+      });
+      setTimeout(function () {
+        if (!window.__veilReady && boot && !boot.classList.contains('done')) {
+          var s = boot.querySelector('small');
+          if (s) s.textContent = window.__ammoLoadError
+            ? 'the physics engine could not be loaded — check your network connection'
+            : 'still loading three.js & ammo.js from the CDN — check your network connection';
+        }
+      }, 14000);
+    })();
+  </script>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/",
+      "lil-gui": "https://cdn.jsdelivr.net/npm/lil-gui@0.20.0/dist/lil-gui.esm.js"
+    }
+  }
+  </script>
+
+  <script type="module">
+  import * as THREE from 'three';
+  import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+  import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+  import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+  import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+  import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+  import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+  import GUI from 'lil-gui';
+
+  /* ================================================================== */
+  /*  VEIL — an invisible figure, revealed only by a falling veil.      */
+  /*  three.js · ammo.js (Bullet soft-body cloth) · lil-gui             */
+  /* ================================================================== */
+
+  const AMMO_BASE = 'https://cdn.jsdelivr.net/gh/kripken/ammo.js@c8779e60159d428f11ff1eb553dc9b6b6e2d317a/builds/';
+  const UP = new THREE.Vector3(0, 1, 0);
+  const TAU = Math.PI * 2;
+
+  const CROWN_Y = 1.76;        // where the veil's centre comes to rest
+  const START_Y = 2.42;        // where the veil is held before it falls
+  const DROP_DURATION = 6.0;   // seconds of falling (Disney slow-in / slow-out)
+  const HOLD_DURATION = 1.15;  // anticipation before the drop
+  const PIN_HALF = 1;          // a small 3x3 patch is held at the crown
+
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const clamp01 = (v) => clamp(v, 0, 1);
+  const smoothstep = (a, b, x) => {
+    const t = clamp01((x - a) / (b - a));
+    return t * t * (3 - 2 * t);
+  };
+  const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+  const easeOut = (t) => 1 - Math.pow(1 - t, 3);
+  function makeRng(seed) {
+    let a = (seed | 0) || 1;
+    return () => {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  page furniture                                                     */
+  /* ------------------------------------------------------------------ */
+
+  const stage = document.getElementById('stage');
+  const boot = document.getElementById('boot');
+  const hint = document.getElementById('hint');
+
+  /* ------------------------------------------------------------------ */
+  /*  renderer / scene / camera                                          */
+  /* ------------------------------------------------------------------ */
+
+  const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance', stencil: false });
+  const IS_SMALL = window.matchMedia('(max-width: 760px)').matches;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, IS_SMALL ? 1.5 : 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x000000, 1);
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.08;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  stage.appendChild(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x000000);
+
+  const camera = new THREE.PerspectiveCamera(34, window.innerWidth / window.innerHeight, 0.05, 80);
+
+  function frameCamera() {
+    const aspect = window.innerWidth / window.innerHeight;
+    if (aspect < 0.85) {
+      camera.fov = 48;
+      camera.position.set(1.7, 1.55, 6.6);
+    } else {
+      camera.fov = 34;
+      camera.position.set(1.95, 1.5, 4.95);
+    }
+    camera.updateProjectionMatrix();
+  }
+  frameCamera();
+
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.target.set(0, 1.02, 0);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.055;
+  controls.enablePan = false;
+  controls.minDistance = 3.1;
+  controls.maxDistance = 8.2;
+  controls.minPolarAngle = 0.22;
+  controls.maxPolarAngle = Math.PI * 0.5 - 0.035;
+  controls.rotateSpeed = 0.65;
+  controls.autoRotate = true;
+  controls.autoRotateSpeed = 0.32;
+  controls.update();
+
+  /* ------------------------------------------------------------------ */
+  /*  small shared helpers                                               */
+  /* ------------------------------------------------------------------ */
+
+  const uniformsTime = { value: 0 };
+  const dustPixelRatio = { value: renderer.getPixelRatio() };
+
+  /* ------------------------------------------------------------------ */
+  /*  backdrop                                                           */
+  /* ------------------------------------------------------------------ */
+
+  const backdropMat = new THREE.ShaderMaterial({
+    side: THREE.BackSide,
+    depthWrite: false,
+    depthTest: false,
+    uniforms: {
+      uTime: uniformsTime,
+      uGlowDir: { value: new THREE.Vector3(0, 0, -1) },
+      uGlow: { value: 0.07 },
+    },
+    vertexShader: /* glsl */`
+      varying vec3 vDir;
+      void main() {
+        vDir = position;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: /* glsl */`
+      varying vec3 vDir;
+      uniform vec3 uGlowDir;
+      uniform float uTime, uGlow;
+      float hash(vec2 p) {
+        return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+      }
+      float noise(vec2 p) {
+        vec2 i = floor(p), f = fract(p);
+        vec2 u = f * f * (3.0 - 2.0 * f);
+        return mix(mix(hash(i), hash(i + vec2(1, 0)), u.x),
+                   mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), u.x), u.y);
+      }
+      void main() {
+        vec3 d = normalize(vDir);
+        float h = clamp(d.y * 0.5 + 0.5, 0.0, 1.0);
+        vec3 col = mix(vec3(0.0025), vec3(0.02), pow(h, 2.6));
+        float glow = pow(max(dot(d, normalize(uGlowDir)), 0.0), 7.5);
+        col += vec3(uGlow) * glow;
+        float n = noise(d.xz * 4.0 + d.y * 2.0);
+        col *= 0.86 + 0.28 * n;
+        col += 0.0035 * pow(1.0 - abs(d.y), 12.0);
+        gl_FragColor = vec4(col, 1.0);
+      }
+    `,
+  });
+  const backdrop = new THREE.Mesh(new THREE.SphereGeometry(32, 48, 24), backdropMat);
+  backdrop.renderOrder = -1000;
+  scene.add(backdrop);
+
+  /* ------------------------------------------------------------------ */
+  /*  floor                                                              */
+  /* ------------------------------------------------------------------ */
+
+  const floorMat = new THREE.ShaderMaterial({
+    uniforms: {
+      uTime: uniformsTime,
+    },
+    vertexShader: /* glsl */`
+      varying vec3 vWorld;
+      void main() {
+        vec4 wp = modelMatrix * vec4(position, 1.0);
+        vWorld = wp.xyz;
+        gl_Position = projectionMatrix * viewMatrix * wp;
+      }
+    `,
+    fragmentShader: /* glsl */`
+      varying vec3 vWorld;
+      uniform float uTime;
+      float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+      float noise(vec2 p) {
+        vec2 i = floor(p), f = fract(p);
+        vec2 u = f * f * (3.0 - 2.0 * f);
+        return mix(mix(hash(i), hash(i + vec2(1, 0)), u.x),
+                   mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), u.x), u.y);
+      }
+      float fbm(vec2 p) {
+        float v = 0.0, a = 0.5;
+        for (int i = 0; i < 4; i++) { v += noise(p) * a; p = p * 2.03 + 17.1; a *= 0.5; }
+        return v;
+      }
+      void main() {
+        vec2 p = vWorld.xz;
+        float r = length(p);
+        float pool = smoothstep(3.4, 0.05, r);
+        float halo = pow(pool, 2.3);
+        vec3 col = vec3(0.0018);
+        col += vec3(0.062) * halo;
+        col += vec3(0.012) * pool;
+        // soft shadow where the veil pools
+        col *= 1.0 - 0.58 * smoothstep(1.75, 0.2, r);
+        float n = fbm(p * 2.6 + vec2(4.3, -1.7));
+        float n2 = fbm(p * 8.0 - vec2(2.0, 5.0));
+        col *= 0.72 + 0.42 * n + 0.12 * n2;
+        // gentle sheen from the overhead light
+        col += vec3(0.02) * pow(halo, 4.0) * (0.7 + 0.3 * sin(uTime * 0.17));
+        col *= 1.0 - 0.35 * smoothstep(5.2, 8.4, r);
+        col = mix(col, vec3(0.0046), smoothstep(4.4, 8.8, r));
+        gl_FragColor = vec4(max(col, 0.0), 1.0);
+      }
+    `,
+  });
+  const floor = new THREE.Mesh(new THREE.CircleGeometry(9.2, 96), floorMat);
+  floor.rotation.x = -Math.PI / 2;
+  floor.position.y = 0;
+  scene.add(floor);
+
+  /* ------------------------------------------------------------------ */
+  /*  lights (for the debug mannequin)                                   */
+  /* ------------------------------------------------------------------ */
+
+  const keyLight = new THREE.DirectionalLight(0xffffff, 2.6);
+  keyLight.position.set(2.8, 4.6, 3.2);
+  scene.add(keyLight);
+  const rimLight = new THREE.DirectionalLight(0xffffff, 2.2);
+  rimLight.position.set(-2.6, 3.2, -3.8);
+  scene.add(rimLight);
+  const hemi = new THREE.HemisphereLight(0xffffff, 0x050505, 0.45);
+  scene.add(hemi);
+
+  /* light directions used by the veil shader */
+  const veilKeyDir = new THREE.Vector3(0.42, 0.72, 0.55).normalize();
+  const veilRimDir = new THREE.Vector3(-0.35, 0.32, -0.88).normalize();
+  const veilFillDir = new THREE.Vector3(-0.6, -0.25, 0.45).normalize();
+
+  /* ------------------------------------------------------------------ */
+  /*  volumetric beam                                                    */
+  /* ------------------------------------------------------------------ */
+
+  const beamMat = new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    depthTest: true,
+    side: THREE.DoubleSide,
+    blending: THREE.AdditiveBlending,
+    uniforms: { uTime: uniformsTime, uOpacity: { value: 0.85 } },
+    vertexShader: /* glsl */`
+      varying vec3 vWorld;
+      varying vec3 vNormalW;
+      varying vec3 vView;
+      varying vec2 vUvB;
+      void main() {
+        vec4 wp = modelMatrix * vec4(position, 1.0);
+        vWorld = wp.xyz;
+        vNormalW = normalize(mat3(modelMatrix) * normal);
+        vView = normalize(cameraPosition - wp.xyz);
+        vUvB = uv;
+        gl_Position = projectionMatrix * viewMatrix * wp;
+      }
+    `,
+    fragmentShader: /* glsl */`
+      varying vec3 vWorld;
+      varying vec3 vNormalW;
+      varying vec3 vView;
+      varying vec2 vUvB;
+      uniform float uTime, uOpacity;
+      float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+      float noise(vec2 p) {
+        vec2 i = floor(p), f = fract(p);
+        vec2 u = f * f * (3.0 - 2.0 * f);
+        return mix(mix(hash(i), hash(i + vec2(1, 0)), u.x),
+                   mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), u.x), u.y);
+      }
+      void main() {
+        float facing = abs(dot(normalize(vNormalW), normalize(vView)));
+        float core = pow(facing, 1.6);
+        float h = clamp(vUvB.y, 0.0, 1.0);
+        float ends = smoothstep(0.0, 0.18, h) * smoothstep(1.0, 0.62, h);
+        float streak = 0.72 + 0.28 * noise(vec2(vWorld.x * 2.4 + uTime * 0.04, vWorld.y * 0.5));
+        float a = core * ends * streak * 0.055 * uOpacity;
+        gl_FragColor = vec4(vec3(0.72), a);
+      }
+    `,
+  });
+  const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 1.95, 6.4, 64, 1, true), beamMat);
+  beam.position.set(0.15, 3.2, 0.05);
+  beam.rotation.z = 0.025;
+  beam.renderOrder = 2;
+  scene.add(beam);
+
+  /* ------------------------------------------------------------------ */
+  /*  dust motes                                                         */
+  /* ------------------------------------------------------------------ */
+
+  function makeDust() {
+    const N = 170;
+    const rng = makeRng(90210);
+    const pos = new Float32Array(N * 3);
+    const phase = new Float32Array(N);
+    const size = new Float32Array(N);
+    const speed = new Float32Array(N);
+    for (let i = 0; i < N; i++) {
+      const a = rng() * TAU;
+      const r = 0.15 + Math.pow(rng(), 0.7) * 2.3;
+      pos[i * 3] = Math.cos(a) * r;
+      pos[i * 3 + 1] = rng() * 3.3;
+      pos[i * 3 + 2] = Math.sin(a) * r;
+      phase[i] = rng() * TAU;
+      size[i] = 0.65 + rng() * 1.65;
+      speed[i] = 0.025 + rng() * 0.075;
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    geo.setAttribute('aPhase', new THREE.BufferAttribute(phase, 1));
+    geo.setAttribute('aSize', new THREE.BufferAttribute(size, 1));
+    geo.setAttribute('aSpeed', new THREE.BufferAttribute(speed, 1));
+    const mat = new THREE.ShaderMaterial({
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      uniforms: { uTime: uniformsTime, uPixelRatio: dustPixelRatio },
+      vertexShader: /* glsl */`
+        attribute float aPhase;
+        attribute float aSize;
+        attribute float aSpeed;
+        uniform float uTime, uPixelRatio;
+        varying float vA;
+        void main() {
+          vec3 p = position;
+          p.y = mod(p.y + uTime * aSpeed, 3.3);
+          p.x += sin(uTime * 0.27 + aPhase) * 0.1;
+          p.z += cos(uTime * 0.21 + aPhase * 1.7) * 0.1;
+          vec4 mv = modelViewMatrix * vec4(p, 1.0);
+          gl_PointSize = aSize * uPixelRatio * (11.0 / max(0.4, -mv.z));
+          gl_Position = projectionMatrix * mv;
+          vA = (0.35 + 0.65 * (0.5 + 0.5 * sin(uTime * 0.9 + aPhase * 3.3)))
+             * smoothstep(0.0, 0.5, p.y) * smoothstep(3.3, 2.6, p.y);
+        }
+      `,
+      fragmentShader: /* glsl */`
+        varying float vA;
+        void main() {
+          float d = length(gl_PointCoord - 0.5);
+          float a = smoothstep(0.5, 0.02, d);
+          gl_FragColor = vec4(vec3(0.8), a * vA * 0.34);
+        }
+      `,
+    });
+    const points = new THREE.Points(geo, mat);
+    points.renderOrder = 3;
+    return points;
+  }
+  scene.add(makeDust());
+
+  /* ------------------------------------------------------------------ */
+  /*  the invisible figure                                               */
+  /*  Built twice: a smooth visual body (debug only) and an identical    */
+  /*  set of static Bullet colliders which the veil dresses.             */
+  /* ------------------------------------------------------------------ */
+
+  const BODY = {
+    caps: [
+      // pelvis / waist / chest
+      { a: [0, 0.91, 0.01], b: [0, 0.98, 0.0], r: 0.118 },
+      { a: [0, 0.98, 0.0], b: [0, 1.13, -0.005], r: 0.108 },
+      { a: [0, 1.13, -0.005], b: [0, 1.35, 0.0], r: 0.142 },
+      { a: [-0.155, 1.405, 0.0], b: [0.155, 1.405, 0.0], r: 0.068 },
+      { a: [0, 1.455, 0.005], b: [0, 1.555, 0.012], r: 0.044 },
+      // arms — both lifted, palms pressing into the veil from within
+      { a: [-0.155, 1.405, 0.0], b: [-0.285, 1.185, 0.075], r: 0.046 },
+      { a: [-0.285, 1.185, 0.075], b: [-0.165, 1.225, 0.34], r: 0.038 },
+      { a: [0.155, 1.405, 0.0], b: [0.285, 1.185, 0.075], r: 0.046 },
+      { a: [0.285, 1.185, 0.075], b: [0.165, 1.225, 0.34], r: 0.038 },
+      // legs — a light contralto stance
+      { a: [-0.088, 0.915, 0.02], b: [-0.115, 0.52, 0.055], r: 0.073 },
+      { a: [-0.115, 0.52, 0.055], b: [-0.1, 0.1, 0.095], r: 0.052 },
+      { a: [0.088, 0.915, -0.02], b: [0.13, 0.52, -0.075], r: 0.073 },
+      { a: [0.13, 0.52, -0.075], b: [0.15, 0.1, -0.13], r: 0.052 },
+      // feet
+      { a: [-0.1, 0.085, 0.095], b: [-0.11, 0.045, 0.27], r: 0.044 },
+      { a: [0.15, 0.085, -0.13], b: [0.18, 0.045, 0.02], r: 0.044 },
+    ],
+    spheres: [
+      // these are drawn and simulated with the same radii — the debug figure
+      // and the veil's colliders must be exactly the same shapes
+      { p: [-0.005, 1.635, 0.018], r: 0.099 },   // head
+      { p: [-0.005, 1.63, 0.113], r: 0.023 },    // nose
+      { p: [-0.005, 1.558, 0.07], r: 0.036 },    // chin
+      { p: [0.01, 1.72, -0.045], r: 0.04 },      // hair bun
+      { p: [-0.145, 1.235, 0.375], r: 0.052 },   // left hand
+      { p: [0.145, 1.235, 0.375], r: 0.052 },    // right hand
+    ],
+  };
+
+  const figureGroup = new THREE.Group();
+  figureGroup.visible = false;
+  scene.add(figureGroup);
+
+  const colliderGroup = new THREE.Group();
+  colliderGroup.visible = false;
+  scene.add(colliderGroup);
+
+  const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0x8f8f8f, roughness: 0.72, metalness: 0.0 });
+  const colliderMaterial = new THREE.MeshBasicMaterial({
+    color: 0xffffff, wireframe: true, transparent: true, opacity: 0.2, depthWrite: false,
+  });
+
+  const capsuleSpecs = [];
+  {
+    const rng = makeRng(771);
+    for (const c of BODY.caps) {
+      const a = new THREE.Vector3(...c.a);
+      const b = new THREE.Vector3(...c.b);
+      const dir = b.clone().sub(a);
+      const len = dir.length();
+      const mid = a.clone().add(b).multiplyScalar(0.5);
+      const quat = new THREE.Quaternion().setFromUnitVectors(UP, dir.clone().normalize());
+      const geo = new THREE.CapsuleGeometry(c.r, Math.max(len, 0.002), 7, 18);
+      const mesh = new THREE.Mesh(geo, bodyMaterial);
+      mesh.position.copy(mid);
+      mesh.quaternion.copy(quat);
+      figureGroup.add(mesh);
+      const wire = new THREE.Mesh(new THREE.CapsuleGeometry(c.r, Math.max(len, 0.002), 4, 10), colliderMaterial);
+      wire.position.copy(mid);
+      wire.quaternion.copy(quat);
+      colliderGroup.add(wire);
+      capsuleSpecs.push({ a, b, r: c.r });
+    }
+    for (const s of BODY.spheres) {
+      const p = new THREE.Vector3(...s.p);
+      const geo = new THREE.SphereGeometry(s.r, 22, 16);
+      const mesh = new THREE.Mesh(geo, bodyMaterial);
+      mesh.position.copy(p);
+      figureGroup.add(mesh);
+      const wire = new THREE.Mesh(new THREE.SphereGeometry(s.r, 10, 7), colliderMaterial);
+      wire.position.copy(p);
+      colliderGroup.add(wire);
+      capsuleSpecs.push({ a: p, b: p.clone(), r: s.r });
+    }
+    figureGroup.traverse((o) => { if (o.isMesh) o.castShadow = false; });
+  }
+
+  /* capsule data for the veil shader (world space) */
+  const CAPS = capsuleSpecs.map((c) => ({ a: c.a, b: c.b, r: c.r }));
+
+  /* ------------------------------------------------------------------ */
+  /*  fabric texture — a drawn lace / tulle                             */
+  /* ------------------------------------------------------------------ */
+
+  function makeLaceTexture() {
+    const S = 1024;
+    const c = document.createElement('canvas');
+    c.width = c.height = S;
+    const ctx = c.getContext('2d');
+    const rng = makeRng(424242);
+
+    // base tulle: a soft grey with a fine perforated grid and fabric noise
+    ctx.fillStyle = '#6c6c6c';
+    ctx.fillRect(0, 0, S, S);
+    for (let y = 0; y < S; y += 4) {
+      for (let x = 0; x < S; x += 4) {
+        const a = 0.05 + rng() * 0.16;
+        ctx.fillStyle = 'rgba(0,0,0,' + a.toFixed(3) + ')';
+        ctx.fillRect(x + 1, y + 1, 1.5, 1.5);
+      }
+    }
+    for (let i = 0; i < 26000; i++) {
+      const x = rng() * S, y = rng() * S;
+      const a = 0.02 + rng() * 0.06;
+      ctx.fillStyle = (rng() < 0.5 ? 'rgba(255,255,255,' : 'rgba(0,0,0,') + a.toFixed(3) + ')';
+      ctx.fillRect(x, y, 1.5, 1.5);
+    }
+
+    // a fine thread grid
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.strokeStyle = 'rgba(214,214,214,0.085)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < S; i += 16) {
+      ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, S); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(S, i); ctx.stroke();
+    }
+
+    const flower = (x, y, r, petals, rot, light) => {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(rot);
+      for (let p = 0; p < petals; p++) {
+        ctx.save();
+        ctx.rotate((p / petals) * TAU);
+        ctx.beginPath();
+        ctx.ellipse(0, -r * 0.62, r * 0.34, r * 0.66, 0, 0, TAU);
+        ctx.fillStyle = light ? 'rgba(238,238,238,0.7)' : 'rgba(205,205,205,0.5)';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(10,10,10,0.38)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.restore();
+      }
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 0.19, 0, TAU);
+      ctx.fillStyle = 'rgba(0,0,0,0.65)';
+      ctx.fill();
+      for (let p = 0; p < 7; p++) {
+        const a = (p / 7) * TAU + 0.3;
+        ctx.beginPath();
+        ctx.arc(Math.cos(a) * r * 0.36, Math.sin(a) * r * 0.36, 1.3, 0, TAU);
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fill();
+      }
+      ctx.restore();
+    };
+
+    // sparse floral embroidery, laid out with hand-placed irregularity
+    const spots = [
+      [0.2, 0.22, 1.0], [0.5, 0.16, 0.7], [0.78, 0.24, 1.1], [0.36, 0.39, 0.8],
+      [0.64, 0.43, 1.25], [0.15, 0.58, 0.9], [0.44, 0.63, 0.75], [0.82, 0.6, 1.0],
+      [0.27, 0.79, 1.15], [0.56, 0.84, 0.7], [0.76, 0.79, 0.85], [0.4, 0.94, 1.0],
+    ];
+    for (const [u, v, s] of spots) {
+      flower(u * S, v * S, 14 * s, 6 + ((rng() * 3) | 0), rng() * TAU, rng() > 0.4);
+    }
+
+    // fine connecting filigree
+    ctx.strokeStyle = 'rgba(220,220,220,0.14)';
+    ctx.lineWidth = 1.1;
+    for (let i = 0; i < 70; i++) {
+      const x = 60 + rng() * (S - 120);
+      const y = 60 + rng() * (S - 120);
+      const a = rng() * TAU;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.bezierCurveTo(
+        x + Math.cos(a) * 40, y + Math.sin(a) * 40,
+        x + Math.cos(a + 1.2) * 80, y + Math.sin(a + 1.2) * 80,
+        x + Math.cos(a + 0.5) * 120, y + Math.sin(a + 0.5) * 120
+      );
+      ctx.stroke();
+    }
+
+    // ornate scalloped border on all four edges
+    const band = 118;
+    const drawBorderEdge = (horizontal, flip) => {
+      ctx.save();
+      if (!horizontal) {
+        ctx.translate(flip ? S : 0, flip ? S : 0);
+        ctx.rotate(-Math.PI / 2);
+      } else if (flip) {
+        ctx.translate(S, S);
+        ctx.rotate(Math.PI);
+      }
+      // dense pearled outer edge
+      for (let x = 8; x < S; x += 13) {
+        ctx.beginPath();
+        ctx.arc(x, 9, 2.4, 0, TAU);
+        ctx.fillStyle = 'rgba(238,238,238,0.72)';
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(x, 9, 1.1, 0, TAU);
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fill();
+      }
+      // scallops
+      for (let x = 0; x < S; x += 52) {
+        ctx.beginPath();
+        ctx.arc(x + 26, band - 32, 26, 0, Math.PI, false);
+        ctx.strokeStyle = 'rgba(232,232,232,0.5)';
+        ctx.lineWidth = 2.4;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(x + 26, band - 34, 10, 0, Math.PI, false);
+        ctx.strokeStyle = 'rgba(220,220,220,0.24)';
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+      }
+      // eyelet row inside the border
+      for (let y = 26; y < band - 30; y += 22) {
+        for (let x = (y % 44 === 0 ? 20 : 42); x < S; x += 44) {
+          ctx.beginPath();
+          ctx.arc(x, y, 4.2, 0, TAU);
+          ctx.strokeStyle = 'rgba(220,220,220,0.18)';
+          ctx.lineWidth = 1.2;
+          ctx.stroke();
+        }
+      }
+      // inner lace line
+      ctx.beginPath();
+      ctx.moveTo(0, band);
+      for (let x = 0; x <= S; x += 38) {
+        ctx.arc(x, band, 19, Math.PI, 0, true);
+      }
+      ctx.strokeStyle = 'rgba(235,235,235,0.24)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.restore();
+    };
+    drawBorderEdge(true, false);
+    drawBorderEdge(true, true);
+    drawBorderEdge(false, false);
+    drawBorderEdge(false, true);
+
+    // rosettes in the four corners
+    flower(72, 72, 30, 8, 0.3, true);
+    flower(S - 72, 72, 30, 8, 1.2, true);
+    flower(72, S - 72, 30, 8, 2.0, true);
+    flower(S - 72, S - 72, 30, 8, 0.8, true);
+
+    // soften the very edge into a sheer hem
+    const g = ctx.createLinearGradient(0, 0, S, 0);
+    g.addColorStop(0, 'rgba(0,0,0,0.35)');
+    g.addColorStop(0.035, 'rgba(0,0,0,0)');
+    g.addColorStop(0.965, 'rgba(0,0,0,0)');
+    g.addColorStop(1, 'rgba(0,0,0,0.35)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, S, S);
+    const g2 = ctx.createLinearGradient(0, 0, 0, S);
+    g2.addColorStop(0, 'rgba(0,0,0,0.35)');
+    g2.addColorStop(0.03, 'rgba(0,0,0,0)');
+    g2.addColorStop(0.97, 'rgba(0,0,0,0)');
+    g2.addColorStop(1, 'rgba(0,0,0,0.35)');
+    ctx.fillStyle = g2;
+    ctx.fillRect(0, 0, S, S);
+
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.NoColorSpace;
+    tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+    tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+    tex.minFilter = THREE.LinearMipmapLinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+    return tex;
+  }
+  const laceTexture = makeLaceTexture();
+
+  /* ------------------------------------------------------------------ */
+  /*  the veil                                                           */
+  /* ------------------------------------------------------------------ */
+
+  const MATERIALS = {
+    Lace: {
+      label: 'Lace',
+      sheerness: 0.66, sheen: 0.62, backlight: 0.95, weave: 0.55, lace: 1.0,
+      color: 0.93, mass: 0.42, kdf: 0.92, klst: 0.52, damping: 0.07,
+    },
+    Silk: {
+      label: 'Silk',
+      sheerness: 0.58, sheen: 1.0, backlight: 0.58, weave: 0.12, lace: 0.1,
+      color: 0.98, mass: 0.55, kdf: 0.82, klst: 0.62, damping: 0.045,
+    },
+    Gauze: {
+      label: 'Gauze',
+      sheerness: 0.86, sheen: 0.36, backlight: 1.05, weave: 0.72, lace: 0.42,
+      color: 0.9, mass: 0.3, kdf: 0.95, klst: 0.42, damping: 0.09,
+    },
+    Tulle: {
+      label: 'Tulle',
+      sheerness: 0.9, sheen: 0.32, backlight: 1.1, weave: 0.65, lace: 0.72,
+      color: 0.86, mass: 0.26, kdf: 0.96, klst: 0.38, damping: 0.1,
+    },
+    Velvet: {
+      label: 'Velvet',
+      sheerness: 0.42, sheen: 1.15, backlight: 0.24, weave: 0.26, lace: 0.18,
+      color: 0.58, mass: 0.85, kdf: 0.88, klst: 0.62, damping: 0.055,
+    },
+    Chiffon: {
+      label: 'Chiffon',
+      sheerness: 0.82, sheen: 0.5, backlight: 1.0, weave: 0.44, lace: 0.24,
+      color: 0.92, mass: 0.3, kdf: 0.9, klst: 0.44, damping: 0.075,
+    },
+  };
+
+  const params = {
+    material: 'Lace',
+    sheerness: MATERIALS.Lace.sheerness,
+    size: 3.4,
+    detail: IS_SMALL ? 'Low' : 'Medium',
+    gravity: 7.0,
+    wind: 0.32,
+    cling: 0.72,
+    exposure: 1.08,
+    bloom: 0.55,
+    grain: 0.34,
+    vignette: 0.72,
+    aberration: 0.12,
+    damage: 0.28,
+    autoOrbit: true,
+    showFigure: false,
+    showColliders: false,
+    breathing: true,
+  };
+
+  const DETAILS = { Low: 40, Medium: 56, High: 68 };
+
+  const state = {
+    phase: 'boot',      // boot | hold | drop | settle | resetting
+    holdT: 0,
+    dropT: 0,
+    fade: 1,
+    rebuilt: false,
+    resetT: 0,
+    ready: false,
+  };
+
+  let Ammo = null;
+  let physics = null;
+  let softBody = null;
+  let nodes = null;
+  let nodeCount = 0;
+  let nodePos = null;
+  let pinned = null;
+  let anchorBody = null;
+  let anchorTransform = null;
+  let anchorMotionState = null;
+  let veilGeometry = null;
+  const veilMeshes = [];
+  const veilMaterials = [];
+  let veilGroup = new THREE.Group();
+  scene.add(veilGroup);
+
+  const tmpVec = { value: null };
+  const grabUniformPos = new THREE.Vector3();
+  let grabStrength = 0;
+
+  /* base uniforms, cloned per material */
+  function makeVeilUniforms(factor) {
+    const N = 24;
+    return {
+      uLaceMap: { value: laceTexture },
+      uColor: { value: new THREE.Color(0.93, 0.93, 0.93) },
+      uSheerness: { value: 0.66 },
+      uSheen: { value: 0.7 },
+      uBacklight: { value: 0.9 },
+      uWeave: { value: 0.55 },
+      uLace: { value: 1.0 },
+      uFade: { value: 1 },
+      uLayer: { value: factor },
+      uTime: uniformsTime,
+      uKeyDir: { value: veilKeyDir },
+      uRimDir: { value: veilRimDir },
+      uFillDir: { value: veilFillDir },
+      uCapA: { value: Array.from({ length: N }, () => new THREE.Vector4()) },
+      uCapB: { value: Array.from({ length: N }, () => new THREE.Vector4()) },
+      uCapCount: { value: 0 },
+      uGrabPos: { value: grabUniformPos },
+      uGrabStrength: { value: 0 },
+    };
+  }
+
+  const veilVert = /* glsl */`
+    #define NCAP 24
+    uniform vec4 uCapA[NCAP];
+    uniform vec4 uCapB[NCAP];
+    uniform int uCapCount;
+    uniform float uTime;
+    varying vec3 vWorld;
+    varying vec3 vNormalW;
+    varying vec3 vView;
+    varying vec2 vUv;
+    varying float vContact;
+
+    float capDist(vec3 p, vec4 a, vec4 b) {
+      vec3 ab = b.xyz - a.xyz;
+      float t = clamp(dot(p - a.xyz, ab) / max(dot(ab, ab), 1e-5), 0.0, 1.0);
+      return length(p - (a.xyz + ab * t)) - a.w;
+    }
+
+    void main() {
+      vUv = uv;
+      vec4 wp = modelMatrix * vec4(position, 1.0);
+      vWorld = wp.xyz;
+      vNormalW = normalize(mat3(modelMatrix) * normal);
+      vView = normalize(cameraPosition - wp.xyz);
+      float contact = 0.0;
+      for (int i = 0; i < NCAP; i++) {
+        if (i >= uCapCount) break;
+        float d = capDist(vWorld, uCapA[i], uCapB[i]);
+        contact = max(contact, smoothstep(0.18, 0.0, d));
+      }
+      vContact = contact;
+      gl_Position = projectionMatrix * viewMatrix * wp;
+    }
+  `;
+
+  const veilFrag = /* glsl */`
+    #define NCAP 24
+    uniform sampler2D uLaceMap;
+    uniform vec3 uColor;
+    uniform vec3 uKeyDir, uRimDir, uFillDir;
+    uniform vec3 uGrabPos;
+    uniform int uCapCount;
+    uniform float uSheerness, uSheen, uBacklight, uWeave, uLace, uFade, uLayer;
+    uniform float uTime, uGrabStrength;
+    varying vec3 vWorld;
+    varying vec3 vNormalW;
+    varying vec3 vView;
+    varying vec2 vUv;
+    varying float vContact;
+
+    void main() {
+      vec3 n = normalize(vNormalW);
+      if (!gl_FrontFacing) n = -n;
+      vec3 v = normalize(vView);
+      vec3 key = normalize(uKeyDir);
+      vec3 rim = normalize(uRimDir);
+      vec3 fill = normalize(uFillDir);
+
+      float ndl = clamp(dot(n, key), 0.0, 1.0);
+      float wrap = pow(clamp(dot(n, key) * 0.5 + 0.5, 0.0, 1.0), 1.35);
+      float fres = pow(1.0 - clamp(abs(dot(n, v)), 0.0, 1.0), 2.2);
+      float back = pow(clamp(dot(-n, rim), 0.0, 1.0), 1.5);
+      float fillAmt = clamp(dot(n, fill) * 0.5 + 0.5, 0.0, 1.0);
+
+      vec4 lace = texture2D(uLaceMap, vUv);
+      float pat = mix(1.0, clamp(lace.r * 1.16, 0.0, 1.0), uLace);
+
+      // a fine cross weave, scaled in world-ish terms
+      float weave = sin(vUv.x * 320.0) * sin(vUv.y * 320.0);
+      float weave2 = sin(vUv.x * 95.0 + 1.7) * 0.5 + 0.5;
+      float w = 1.0 + uWeave * (weave * 0.045 + (weave2 - 0.5) * 0.055);
+
+      // the body's nearness darkens the cloth — a contact shadow that
+      // makes the invisible figure legible through the fabric
+      float contact = vContact;
+      float contactShade = mix(1.0, 0.6, contact * 0.95);
+      float foldAO = mix(1.0, 0.52, smoothstep(0.15, -0.75, n.y));
+
+      float lightSum = 0.17 + 0.72 * ndl + 0.14 * wrap + 0.1 * fillAmt
+                     + 0.72 * fres * uSheen + 0.62 * back * uBacklight;
+      lightSum *= contactShade * foldAO * w;
+      vec3 col = uColor * lightSum * pat;
+      col += uColor * fres * uSheen * 0.22 * pat;
+
+      // glow around a grabbed point
+      float gd = length(vWorld - uGrabPos);
+      float grab = smoothstep(0.34, 0.0, gd) * uGrabStrength;
+      col += vec3(0.35) * grab * (0.5 + 0.5 * fres);
+
+      float alpha = uSheerness * mix(1.0, pat, 0.55)
+                  * (0.4 + 0.46 * fres + 0.24 * back * uBacklight + 0.2 * wrap)
+                  * (1.0 + contact * 0.12);
+      alpha *= uFade * uLayer;
+      alpha *= 1.02;
+      gl_FragColor = vec4(col, alpha);
+    }
+  `;
+
+  function createVeilMaterials() {
+    const pairs = [
+      { factor: 0.55, side: THREE.BackSide, order: 10 },
+      { factor: 1.0, side: THREE.FrontSide, order: 11 },
+    ];
+    const out = [];
+    for (const p of pairs) {
+      const mats = new THREE.ShaderMaterial({
+        uniforms: makeVeilUniforms(p.factor),
+        vertexShader: veilVert,
+        fragmentShader: veilFrag,
+        transparent: true,
+        depthWrite: false,
+        depthTest: true,
+        side: p.side,
+        blending: THREE.NormalBlending,
+      });
+      out.push(mats);
+    }
+    return out;
+  }
+  veilMaterials.push(...createVeilMaterials());
+  for (let i = 0; i < veilMaterials.length; i++) {
+    const mat = veilMaterials[i];
+    const mesh = new THREE.Mesh(undefined, mat);
+    mesh.renderOrder = i === 0 ? 10 : 11;
+    mesh.frustumCulled = false;
+    veilGroup.add(mesh);
+    veilMeshes.push(mesh);
+  }
+
+  for (const u of veilMaterials) {
+    const count = Math.min(24, CAPS.length);
+    u.uniforms.uCapCount.value = count;
+    for (let i = 0; i < count; i++) {
+      const c = CAPS[i];
+      u.uniforms.uCapA.value[i].set(c.a.x, c.a.y, c.a.z, c.r);
+      u.uniforms.uCapB.value[i].set(c.b.x, c.b.y, c.b.z, 0);
+    }
+  }
+
+  function syncVeilUniform(name, value) {
+    for (const m of veilMaterials) m.uniforms[name].value = value;
+  }
+
+  function applyMaterialPreset(name) {
+    const m = MATERIALS[name];
+    if (!m) return;
+    params.material = name;
+    params.sheerness = m.sheerness;
+    syncVeilUniform('uSheerness', m.sheerness);
+    syncVeilUniform('uSheen', m.sheen);
+    syncVeilUniform('uBacklight', m.backlight);
+    syncVeilUniform('uWeave', m.weave);
+    syncVeilUniform('uLace', m.lace);
+    for (const mat of veilMaterials) mat.uniforms.uColor.value.setScalar(m.color);
+    if (softBody) {
+      softBody.get_m_materials().at(0).set_m_kLST(m.klst);
+      softBody.get_m_materials().at(0).set_m_kAST(m.klst);
+      softBody.get_m_materials().at(0).set_m_kVST(m.klst);
+      const cfg = softBody.get_m_cfg();
+      cfg.set_kDF(m.kdf);
+      cfg.set_kDP(m.damping);
+    }
+    if (softBody) {
+      softBody.setTotalMass(m.mass, false);
+    }
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  Ammo world                                                         */
+  /* ------------------------------------------------------------------ */
+
+  function initPhysics() {
+    const collisionConfiguration = new Ammo.btSoftBodyRigidBodyCollisionConfiguration();
+    const dispatcher = new Ammo.btCollisionDispatcher(collisionConfiguration);
+    const broadphase = new Ammo.btDbvtBroadphase();
+    const solver = new Ammo.btSequentialImpulseConstraintSolver();
+    const softSolver = new Ammo.btDefaultSoftBodySolver();
+    physics = new Ammo.btSoftRigidDynamicsWorld(dispatcher, broadphase, solver, collisionConfiguration, softSolver);
+    setGravity(params.gravity);
+    physics.getWorldInfo().set_m_gravity(new Ammo.btVector3(0, -params.gravity, 0));
+
+    // floor
+    {
+      const shape = new Ammo.btBoxShape(new Ammo.btVector3(10, 0.1, 10));
+      shape.setMargin(0.001);
+      const tr = new Ammo.btTransform();
+      tr.setIdentity();
+      tr.setOrigin(new Ammo.btVector3(0, -0.1, 0));
+      const ms = new Ammo.btDefaultMotionState(tr);
+      const body = new Ammo.btRigidBody(new Ammo.btRigidBodyConstructionInfo(0, ms, shape, new Ammo.btVector3(0, 0, 0)));
+      physics.addRigidBody(body);
+    }
+
+    // the invisible body, one static collider per capsule/sphere
+    const vec = new Ammo.btVector3(0, 0, 0);
+    for (const c of CAPS) {
+      const dir = c.b.clone().sub(c.a);
+      const len = dir.length();
+      const shape = len > 1e-4 ? new Ammo.btCapsuleShape(c.r, len) : new Ammo.btSphereShape(c.r);
+      shape.setMargin(0.006);
+      const tr = new Ammo.btTransform();
+      tr.setIdentity();
+      const mid = c.a.clone().add(c.b).multiplyScalar(0.5);
+      tr.setOrigin(new Ammo.btVector3(mid.x, mid.y, mid.z));
+      if (len > 1e-4) {
+        const q = new THREE.Quaternion().setFromUnitVectors(UP, dir.clone().normalize());
+        tr.setRotation(new Ammo.btQuaternion(q.x, q.y, q.z, q.w));
+      }
+      const ms = new Ammo.btDefaultMotionState(tr);
+      const body = new Ammo.btRigidBody(new Ammo.btRigidBodyConstructionInfo(0, ms, shape, vec));
+      physics.addRigidBody(body);
+    }
+
+    // the anchor body is created once and reused across rebuilds
+    {
+      const shape = new Ammo.btSphereShape(0.01);
+      const tr = new Ammo.btTransform();
+      tr.setIdentity();
+      tr.setOrigin(new Ammo.btVector3(0, START_Y, 0));
+      const ms = new Ammo.btDefaultMotionState(tr);
+      anchorMotionState = ms;
+      anchorBody = new Ammo.btRigidBody(new Ammo.btRigidBodyConstructionInfo(0, ms, shape, vec));
+      anchorBody.setCollisionFlags(2 | 4); // kinematic + no contact response
+      anchorBody.setActivationState(4);
+      physics.addRigidBody(anchorBody);
+      anchorTransform = new Ammo.btTransform();
+      anchorTransform.setIdentity();
+      tmpVec.value = new Ammo.btVector3(0, START_Y, 0);
+    }
+  }
+
+  function setGravity(g) {
+    if (!physics) return;
+    physics.setGravity(new Ammo.btVector3(0, -g, 0));
+    physics.getWorldInfo().set_m_gravity(new Ammo.btVector3(0, -g, 0));
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  cloth construction                                                 */
+  /* ------------------------------------------------------------------ */
+
+  const cloth = {
+    seg: 56,
+    width: 3.4,
+    depth: 3.85,
+  };
+
+  function updateClothSize() {
+    cloth.width = params.size;
+    cloth.depth = params.size * 1.13;
+    cloth.seg = DETAILS[params.detail] || 56;
+  }
+
+  function tearDownCloth() {
+    for (const mesh of veilMeshes) mesh.geometry = undefined;
+    if (veilGeometry) {
+      veilGeometry.dispose();
+      veilGeometry = null;
+    }
+    if (softBody && physics) {
+      physics.removeSoftBody(softBody);
+      Ammo.destroy(softBody);
+      softBody = null;
+      nodes = null;
+      nodeCount = 0;
+      nodePos = null;
+      pinned = null;
+    }
+  }
+
+  function buildCloth() {
+    tearDownCloth();
+    updateClothSize();
+    const SEG = cloth.seg;
+    const W = cloth.width;
+    const D = cloth.depth;
+    const NX = SEG + 1;
+    const NZ = SEG + 1;
+
+    // reset the anchor to the start
+    tmpVec.value.setValue(0, START_Y, 0);
+    anchorTransform.setIdentity();
+    anchorTransform.setOrigin(tmpVec.value);
+    anchorMotionState.setWorldTransform(anchorTransform);
+    anchorBody.setWorldTransform(anchorTransform);
+    anchorBody.setInterpolationWorldTransform(anchorTransform);
+    const helper = new Ammo.btSoftBodyHelpers();
+    const c00 = new Ammo.btVector3(-W / 2, START_Y, -D / 2);
+    const c10 = new Ammo.btVector3(W / 2, START_Y, -D / 2);
+    const c01 = new Ammo.btVector3(-W / 2, START_Y, D / 2);
+    const c11 = new Ammo.btVector3(W / 2, START_Y, D / 2);
+    softBody = helper.CreatePatch(
+      physics.getWorldInfo(), c00, c10, c01, c11, NX, NZ, 0, true
+    );
+    Ammo.destroy(c00); Ammo.destroy(c10); Ammo.destroy(c01); Ammo.destroy(c11);
+
+    const preset = MATERIALS[params.material] || MATERIALS.Lace;
+    softBody.setTotalMass(preset.mass, false);
+    const cfg = softBody.get_m_cfg();
+    cfg.set_viterations(6);
+    cfg.set_piterations(12);
+    cfg.set_collisions(0x01); // soft body vs the rigid colliders and floor
+    cfg.set_kDF(preset.kdf);
+    cfg.set_kDP(preset.damping);
+    cfg.set_kDG(0.008);
+    cfg.set_timescale(1.0);
+    const bm = softBody.get_m_materials().at(0);
+    bm.set_m_kLST(preset.klst);
+    bm.set_m_kAST(preset.klst);
+    bm.set_m_kVST(preset.klst);
+
+    // keep the cloth close to the colliders: the default soft-body margin leaves
+    // the veil floating several centimetres off the figure and the floor
+    try { softBody.getCollisionShape().setMargin(0.035); } catch (e) { /* older builds */ }
+    physics.addSoftBody(softBody, 1, -1);
+    nodes = softBody.get_m_nodes();
+    nodeCount = nodes.size();
+
+    // pin the centre (crown of the head)
+    pinned = new Uint8Array(nodeCount);
+    const mid = SEG >> 1;
+    for (let dy = -PIN_HALF; dy <= PIN_HALF; dy++) {
+      for (let dx = -PIN_HALF; dx <= PIN_HALF; dx++) {
+        const idx = (mid + dy) * NX + (mid + dx);
+        softBody.appendAnchor(idx, anchorBody, false, 1.0);
+        pinned[idx] = 1;
+      }
+    }
+
+    // geometry
+    nodePos = new Float32Array(nodeCount * 3);
+    veilGeometry = new THREE.BufferGeometry();
+    const attr = new THREE.BufferAttribute(nodePos, 3);
+    attr.setUsage(THREE.DynamicDrawUsage);
+    veilGeometry.setAttribute('position', attr);
+    const uv = new Float32Array(nodeCount * 2);
+    const index = new Uint32Array(SEG * SEG * 6);
+    let ii = 0;
+    for (let j = 0; j < NZ; j++) {
+      for (let i = 0; i < NX; i++) {
+        const k = j * NX + i;
+        uv[k * 2] = i / SEG;
+        uv[k * 2 + 1] = j / SEG;
+        if (i < SEG && j < SEG) {
+          const a = k, b = k + NX, c = k + NX + 1, d = k + 1;
+          index[ii++] = a; index[ii++] = b; index[ii++] = d;
+          index[ii++] = b; index[ii++] = c; index[ii++] = d;
+        }
+      }
+    }
+    veilGeometry.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+    veilGeometry.setIndex(new THREE.BufferAttribute(index, 1));
+    // the mesh travels a long way while it falls, so give the raycaster a
+    // generous, static bounding sphere instead of a stale one
+    veilGeometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 1.2, 0), 3.4);
+    veilGeometry.computeVertexNormals();
+    for (const mesh of veilMeshes) mesh.geometry = veilGeometry;
+
+    // seed nodePos so the very first frame is correct
+    readNodesIntoBuffer();
+    attr.needsUpdate = true;
+    veilGeometry.computeVertexNormals();
+
+    // restore the veil's material state
+    applyMaterialPreset(params.material);
+    syncVeilUniform('uSheerness', params.sheerness);
+  }
+
+  function readNodesIntoBuffer() {
+    for (let i = 0; i < nodeCount; i++) {
+      const x = nodes.at(i).get_m_x();
+      nodePos[i * 3] = x.x();
+      nodePos[i * 3 + 1] = x.y();
+      nodePos[i * 3 + 2] = x.z();
+    }
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  cling — a gentle inward pull that lets the clothing find the body  */
+  /* ------------------------------------------------------------------ */
+
+  function applyCling(dt) {
+    if (!softBody || !params.cling) return;
+    const strength = params.cling;
+    const range = 1.12;
+    const v = tmpVec.value;
+    for (let i = 0; i < nodeCount; i++) {
+      if (pinned[i]) continue;
+      const node = nodes.at(i);
+      const x = node.get_m_x();
+      const px = x.x(), py = x.y(), pz = x.z();
+      if (py < 0.28) continue;
+      let bestD = 1e9, nx = 0, ny = 0, nz = 0;
+      for (let c = 0; c < CAPS.length; c++) {
+        const cap = CAPS[c];
+        const ax = cap.a.x, ay = cap.a.y, az = cap.a.z;
+        const bx = cap.b.x, by = cap.b.y, bz = cap.b.z;
+        const abx = bx - ax, aby = by - ay, abz = bz - az;
+        const apx = px - ax, apy = py - ay, apz = pz - az;
+        const ab2 = abx * abx + aby * aby + abz * abz;
+        let tt = ab2 > 1e-8 ? (apx * abx + apy * aby + apz * abz) / ab2 : 0;
+        tt = tt < 0 ? 0 : tt > 1 ? 1 : tt;
+        const qx = ax + abx * tt, qy = ay + aby * tt, qz = az + abz * tt;
+        const dx = px - qx, dy = py - qy, dz = pz - qz;
+        const dd = Math.sqrt(dx * dx + dy * dy + dz * dz) - cap.r;
+        if (dd < bestD) {
+          bestD = dd;
+          const inv = 1 / Math.max(1e-5, dd + cap.r);
+          nx = dx * inv; ny = dy * inv; nz = dz * inv;
+        }
+      }
+      if (bestD < 0.01 || bestD > range) continue;
+      const heightW = 0.32 + 0.68 * clamp01((py - 0.45) / 0.85);
+      const k = strength * 2.4 * heightW * (1 - bestD / range);
+      let ax = -nx * k, ay = -ny * k, az = -nz * k;
+      if (ay > 0) ay = 0; // never lift the hem; gravity stays in charge
+      const nv = node.get_m_v();
+      let vx = nv.x() + ax * dt;
+      let vy = nv.y() + ay * dt;
+      let vz = nv.z() + az * dt;
+      const vn = vx * nx + vy * ny + vz * nz;
+      if (vn > 0) {
+        vx -= nx * vn * 0.32;
+        vy -= ny * vn * 0.32;
+        vz -= nz * vn * 0.32;
+      }
+      // a touch of air drag
+      vx *= 0.998; vy *= 0.998; vz *= 0.998;
+      v.setValue(vx, vy, vz);
+      node.set_m_v(v);
+    }
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  wind                                                               */
+  /* ------------------------------------------------------------------ */
+
+  const windTemp = { x: 0, y: 0, z: 0 };
+  function applyWind(t) {
+    if (!softBody || !params.wind) return;
+    const gust = 0.55 + 0.45 * Math.sin(t * 0.19) * Math.sin(t * 0.53 + 0.8);
+    const fx = (Math.sin(t * 0.41) * 0.7 + Math.sin(t * 1.37 + 1.1) * 0.25) * gust;
+    const fz = (Math.cos(t * 0.33) * 0.6 + Math.cos(t * 1.13 + 0.4) * 0.22) * gust;
+    const fy = 0.08 + 0.06 * Math.sin(t * 0.7 + 0.5);
+    const s = params.wind * 1.1;
+    windTemp.x = fx * s; windTemp.y = fy * s; windTemp.z = fz * s;
+    tmpVec.value.setValue(windTemp.x, windTemp.y, windTemp.z);
+    softBody.addForce(tmpVec.value, 0, nodeCount - 1);
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  drop / reset state machine                                         */
+  /* ------------------------------------------------------------------ */
+
+  // Drop choreography — anticipation (the held veil lifts a little), slow in /
+  // slow out (eased descent), overlapping action (the hem keeps falling after
+  // the crown has landed) and a long settle into breathing.
+  function startHold() {
+    state.phase = 'hold';
+    state.holdT = 0;
+    state.dropT = 0;
+    state.rebuilt = true;
+  }
+
+  function resetVeil() {
+    if (!state.ready) return;
+    if (state.phase === 'resetting') return;
+    state.phase = 'resetting';
+    state.resetT = 0;
+    state.rebuilt = false;
+    grab = null;
+    grabStrength = 0;
+    syncVeilUniform('uGrabStrength', 0);
+    if (controls) controls.enabled = true;
+  }
+
+  function anchorPose(t) {
+    let x = 0, y = START_Y, z = 0;
+    if (state.phase === 'hold') {
+      const e = easeOut(clamp01(state.holdT / HOLD_DURATION));
+      y = START_Y + 0.055 * e;
+      x = 0.012 * Math.sin(t * 0.8);
+      z = 0.009 * Math.cos(t * 0.7);
+    } else if (state.phase === 'drop') {
+      const p = clamp01(state.dropT);
+      const e = easeInOut(p);
+      y = START_Y + 0.055 + (CROWN_Y - START_Y - 0.055) * e;
+      // a barely-there drift, like a hand lowering it
+      const sway = Math.sin(p * Math.PI);
+      x = 0.02 * Math.sin(t * 0.55) * sway;
+      z = 0.016 * Math.cos(t * 0.48) * sway;
+    } else {
+      // settle / resetting: a slow breath at the crown
+      const b = params.breathing ? 1 : 0;
+      y = CROWN_Y + Math.sin(t * 0.62) * 0.008 * b;
+      x = Math.sin(t * 0.27) * 0.012 * b;
+      z = Math.cos(t * 0.23) * 0.009 * b;
+    }
+    tmpVec.value.setValue(x, y, z);
+    anchorTransform.setOrigin(tmpVec.value);
+    anchorMotionState.setWorldTransform(anchorTransform);
+    anchorBody.setWorldTransform(anchorTransform);
+    anchorBody.setInterpolationWorldTransform(anchorTransform);
+  }
+
+  function updateState(dt, t) {
+    if (!state.ready) return;
+    if (state.phase === 'resetting') {
+      state.resetT += dt;
+      if (state.resetT < 0.42) {
+        state.fade = 1 - smoothstep(0, 0.42, state.resetT);
+      } else if (!state.rebuilt) {
+        buildCloth();
+        state.fade = 0;
+        state.phase = 'hold';
+        state.holdT = -0.38;
+        state.dropT = 0;
+        state.rebuilt = true;
+      }
+    } else {
+      state.fade = Math.min(1, state.fade + dt / 0.4);
+    }
+    if (state.phase === 'hold') {
+      state.holdT += dt;
+      if (state.holdT >= HOLD_DURATION) {
+        state.phase = 'drop';
+        state.dropT = 0;
+      }
+    } else if (state.phase === 'drop') {
+      state.dropT += dt / DROP_DURATION;
+      if (state.dropT >= 1) {
+        state.dropT = 1;
+        state.phase = 'settle';
+      }
+    }
+    anchorPose(t);
+    syncVeilUniform('uFade', state.fade);
+    syncVeilUniform('uTime', uniformsTime.value);
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  mouse / touch — pick up the veil                                   */
+  /* ------------------------------------------------------------------ */
+
+  let grab = null;
+  const raycaster = new THREE.Raycaster();
+  const ndc = new THREE.Vector2();
+  const pointer = { hovering: false };
+  let lastHoverCheck = 0;
+
+  function setNdc(e) {
+    const rect = renderer.domElement.getBoundingClientRect();
+    ndc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    ndc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+  }
+
+  function onPointerDown(e) {
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
+    if (!state.ready || state.phase === 'resetting' || state.fade < 0.6) return;
+    setNdc(e);
+    raycaster.setFromCamera(ndc, camera);
+    const hits = raycaster.intersectObjects(veilMeshes, false);
+    if (!hits.length) return;
+    const hit = hits[0].point;
+    // collect a healthy handful of cloth around the hit; each node keeps its
+    // offset from the pinch point so the patch is dragged as a piece of fabric
+    const list = [];
+    const radius = 0.34;
+    for (let i = 0; i < nodeCount; i++) {
+      if (pinned[i]) continue;
+      const dx = nodePos[i * 3] - hit.x;
+      const dy = nodePos[i * 3 + 1] - hit.y;
+      const dz = nodePos[i * 3 + 2] - hit.z;
+      const d2 = dx * dx + dy * dy + dz * dz;
+      if (d2 < radius * radius) {
+        const d = Math.sqrt(d2);
+        const t = 1 - d / radius;
+        list.push({ i, w: t * t * (3 - 2 * t), dx, dy, dz });
+      }
+    }
+    if (!list.length) return;
+    list.sort((p, q) => q.w - p.w);
+    const keep = list.slice(0, 120);
+    const planeNormal = camera.getWorldDirection(new THREE.Vector3()).negate();
+    const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(planeNormal, hit);
+    grab = {
+      plane,
+      origin: hit.clone(),
+      target: hit.clone(),
+      nodes: keep,
+    };
+    controls.enabled = false;
+    controls.autoRotate = false;
+    renderer.domElement.style.cursor = 'grabbing';
+    grabStrength = 1;
+    syncVeilUniform('uGrabStrength', 1);
+    grabUniformPos.copy(hit);
+    // prevent OrbitControls from rotating further
+    e.preventDefault();
+  }
+
+  function onPointerMove(e) {
+    if (!state.ready) return;
+    if (grab) {
+      setNdc(e);
+      raycaster.setFromCamera(ndc, camera);
+      const hit = new THREE.Vector3();
+      if (raycaster.ray.intersectPlane(grab.plane, hit)) {
+        // clamp the pull so the mesh can't be flung into orbit
+        const d = hit.clone().sub(grab.origin);
+        const max = 1.3;
+        if (d.length() > max) hit.copy(grab.origin).add(d.setLength(max));
+        hit.y = Math.max(hit.y, 0.05);
+        grab.target.copy(hit);
+      }
+      return;
+    }
+    const now = performance.now();
+    if (now - lastHoverCheck < 45) return;
+    lastHoverCheck = now;
+    setNdc(e);
+    raycaster.setFromCamera(ndc, camera);
+    const hits = raycaster.intersectObjects(veilMeshes, false);
+    const over = hits.length > 0 && state.phase !== 'resetting' && state.fade > 0.6;
+    if (over !== pointer.hovering) {
+      pointer.hovering = over;
+      renderer.domElement.style.cursor = over ? 'grab' : '';
+    }
+  }
+
+  function endGrab(e) {
+    if (!grab) return;
+    grab = null;
+    grabStrength = 0;
+    syncVeilUniform('uGrabStrength', 0);
+    controls.enabled = true;
+    controls.autoRotate = params.autoOrbit;
+    renderer.domElement.style.cursor = pointer.hovering ? 'grab' : '';
+  }
+
+  renderer.domElement.addEventListener('pointerdown', onPointerDown);
+  window.addEventListener('pointermove', onPointerMove, { passive: true });
+  window.addEventListener('pointerup', endGrab);
+  window.addEventListener('pointercancel', endGrab);
+  renderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault());
+
+  function applyDrag(dt) {
+    if (!grab) return;
+    for (const item of grab.nodes) {
+      const node = nodes.at(item.i);
+      const x = node.get_m_x();
+      const px = x.x(), py = x.y(), pz = x.z();
+      const w = item.w;
+      // the patch moves with the pointer, keeping its local fabric offsets
+      const desiredX = grab.target.x + item.dx * 0.92;
+      const desiredY = grab.target.y + item.dy * 0.92;
+      const desiredZ = grab.target.z + item.dz * 0.92;
+      let dx = (desiredX - px) * 0.62 * w;
+      let dy = (desiredY - py) * 0.62 * w;
+      let dz = (desiredZ - pz) * 0.62 * w;
+      const len = Math.hypot(dx, dy, dz);
+      const max = 0.11;
+      if (len > max) { const s = max / len; dx *= s; dy *= s; dz *= s; }
+      tmpVec.value.setValue(px + dx, Math.max(0.012, py + dy), pz + dz);
+      node.set_m_x(tmpVec.value);
+      tmpVec.value.setValue(0, 0, 0);
+      node.set_m_v(tmpVec.value);
+    }
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  per-frame cloth update                                             */
+  /* ------------------------------------------------------------------ */
+
+  function updateCloth(dt) {
+    if (!softBody || !veilGeometry) return;
+    readNodesIntoBuffer();
+    if (params.cling) applyCling(dt);
+
+    const attr = veilGeometry.attributes.position;
+    attr.needsUpdate = true;
+    veilGeometry.computeVertexNormals();
+    veilGeometry.attributes.normal.needsUpdate = true;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  post processing                                                    */
+  /* ------------------------------------------------------------------ */
+
+  let composer, bloomPass, gradePass;
+  const GradeShader = {
+    uniforms: {
+      tDiffuse: { value: null },
+      uTime: { value: 0 },
+      uGrain: { value: params.grain },
+      uVignette: { value: params.vignette },
+      uAberration: { value: params.aberration },
+      uDamage: { value: params.damage },
+      uExposure: { value: 1 },
+    },
+    vertexShader: /* glsl */`
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: /* glsl */`
+      uniform sampler2D tDiffuse;
+      uniform float uTime, uGrain, uVignette, uAberration, uDamage, uExposure;
+      varying vec2 vUv;
+      float hash21(vec2 p) {
+        p = fract(p * vec2(123.34, 456.21));
+        p += dot(p, p + 45.32);
+        return fract(p.x * p.y);
+      }
+      void main() {
+        // gate weave, very slight
+        float weave = (hash21(vec2(floor(uTime * 24.0), 1.0)) - 0.5) * 0.0007 * uDamage;
+        vec2 uv = vUv + vec2(weave, weave * 0.6);
+        vec2 c = uv - 0.5;
+        float r2 = dot(c, c);
+        vec2 ca = c * r2 * 0.02 * uAberration;
+        vec3 col;
+        col.r = texture2D(tDiffuse, uv + ca).r;
+        col.g = texture2D(tDiffuse, uv).g;
+        col.b = texture2D(tDiffuse, uv - ca).b;
+        col *= uExposure;
+
+        // strict monochrome
+        float l = dot(col, vec3(0.2126, 0.7152, 0.0722));
+
+        // a gentle silver-print curve
+        l = clamp(l, 0.0, 1.0);
+        l = mix(l, l * l * (3.0 - 2.0 * l), 0.32);
+        l = 0.007 + l * 0.986;
+
+        // deep, strong vignette
+        float d = length(c * vec2(1.0, 0.86));
+        float vig = smoothstep(0.88, 0.13, d);
+        l *= mix(1.0, vig, uVignette);
+
+        // animated film grain
+        float tq = floor(uTime * 24.0);
+        float g1 = hash21(gl_FragCoord.xy * 0.72 + tq * 13.17) - 0.5;
+        float g2 = hash21(gl_FragCoord.xy * 0.27 + tq * 7.71 + 3.0) - 0.5;
+        float lumGrain = 0.28 + 0.72 * smoothstep(0.0, 0.32, l);
+        l += (g1 * 0.62 + g2 * 0.38) * uGrain * 0.075 * lumGrain;
+
+        // a rare scratch and a little dust
+        float sx = 0.5 + 0.3 * sin(uTime * 0.19);
+        float scratch = smoothstep(0.0016, 0.0, abs(uv.x - sx))
+                      * smoothstep(0.0, 0.2, uv.y) * smoothstep(1.0, 0.72, uv.y);
+        l += scratch * 0.042 * uDamage * (0.35 + 0.65 * hash21(vec2(floor(uTime * 6.0), 2.0)));
+        float dspeck = smoothstep(0.0009, 0.0, length(uv - vec2(0.76, 0.27)));
+        l *= 1.0 - dspeck * 0.35 * uDamage;
+
+        // dither to keep the blacks quiet
+        l += (hash21(gl_FragCoord.xy) - 0.5) / 255.0;
+
+        // a slow, tiny exposure breath
+        l *= 1.0 + 0.007 * sin(uTime * 0.73) * uDamage;
+        gl_FragColor = vec4(vec3(l), 1.0);
+      }
+    `,
+  };
+
+  /* ------------------------------------------------------------------ */
+  /*  GUI                                                                */
+  /* ------------------------------------------------------------------ */
+
+  let gui = null;
+
+  function buildGUI() {
+    gui = new GUI({ title: 'Veil · settings' });
+    const fVeil = gui.addFolder('Veil');
+    fVeil.add(params, 'material', Object.keys(MATERIALS)).name('Cloth material')
+      .onChange((v) => {
+        applyMaterialPreset(v);
+        updateSheerController();
+      });
+    const sheerCtl = fVeil.add(params, 'sheerness', 0.12, 1.0, 0.01).name('Sheerness')
+      .onChange((v) => syncVeilUniform('uSheerness', v));
+    function updateSheerController() { sheerCtl.updateDisplay(); }
+    fVeil.add(params, 'size', 2.4, 4.4, 0.05).name('Veil size')
+      .onFinishChange(() => resetVeil());
+    fVeil.add(params, 'detail', Object.keys(DETAILS)).name('Simulation detail')
+      .onChange(() => resetVeil());
+    fVeil.add(params, 'gravity', 1.5, 18, 0.1).name('Gravity')
+      .onChange((v) => setGravity(v));
+    fVeil.add(params, 'wind', 0, 1.6, 0.01).name('Air');
+    fVeil.add(params, 'cling', 0, 2.5, 0.01).name('Cloth cling');
+
+    const fDrop = gui.addFolder('Drop');
+    fDrop.add({ drop: () => resetVeil() }, 'drop').name('Drop the veil  (R)');
+    fDrop.add(params, 'breathing').name('Breathing');
+
+    const fDebug = gui.addFolder('Invisible figure');
+    fDebug.add(params, 'showFigure').name('Show figure  (F)')
+      .onChange((v) => { figureGroup.visible = v; });
+    fDebug.add(params, 'showColliders').name('Show colliders  (C)')
+      .onChange((v) => { colliderGroup.visible = v; });
+    fDebug.close();
+
+    const fCam = gui.addFolder('Camera');
+    fCam.add(params, 'autoOrbit').name('Auto orbit')
+      .onChange((v) => { controls.autoRotate = v; });
+    fCam.add({ view: () => { frameCamera(); controls.target.set(0, 1.02, 0); controls.update(); } }, 'view')
+      .name('Reset view');
+    fCam.close();
+
+    const fImg = gui.addFolder('Image');
+    fImg.add(params, 'exposure', 0.55, 1.8, 0.01).name('Exposure')
+      .onChange((v) => { renderer.toneMappingExposure = v; });
+    fImg.add(params, 'bloom', 0, 1.4, 0.01).name('Bloom')
+      .onChange((v) => { if (bloomPass) bloomPass.strength = v; });
+    fImg.add(params, 'grain', 0, 1.2, 0.01).name('Film grain')
+      .onChange((v) => { if (gradePass) gradePass.uniforms.uGrain.value = v; });
+    fImg.add(params, 'vignette', 0, 1, 0.01).name('Vignette')
+      .onChange((v) => { if (gradePass) gradePass.uniforms.uVignette.value = v; });
+    fImg.add(params, 'aberration', 0, 1, 0.01).name('Aberration')
+      .onChange((v) => { if (gradePass) gradePass.uniforms.uAberration.value = v; });
+    fImg.add(params, 'damage', 0, 1, 0.01).name('Film damage')
+      .onChange((v) => { if (gradePass) gradePass.uniforms.uDamage.value = v; });
+    fImg.close();
+
+    // size of the GUI on small screens
+    if (window.innerWidth < 760) gui.close();
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  keyboard                                                           */
+  /* ------------------------------------------------------------------ */
+
+  window.addEventListener('keydown', (e) => {
+    const tag = (e.target && e.target.tagName) || '';
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+    const k = e.key.toLowerCase();
+    if (k === 'r') { resetVeil(); }
+    else if (k === 'f') {
+      params.showFigure = !params.showFigure;
+      figureGroup.visible = params.showFigure;
+      refreshGUI();
+    } else if (k === 'c') {
+      params.showColliders = !params.showColliders;
+      colliderGroup.visible = params.showColliders;
+      refreshGUI();
+    } else if (k === 'h') {
+      if (gui) gui.show(gui._hidden);
+    }
+  });
+
+  function refreshGUI() {
+    if (!gui) return;
+    gui.controllersRecursive().forEach((c) => c.updateDisplay());
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  resize                                                             */
+  /* ------------------------------------------------------------------ */
+
+  function onResize() {
+    const w = window.innerWidth, h = window.innerHeight;
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+    if (composer) composer.setSize(w, h);
+    dustPixelRatio.value = renderer.getPixelRatio();
+  }
+  window.addEventListener('resize', onResize);
+
+  /* ------------------------------------------------------------------ */
+  /*  init                                                               */
+  /* ------------------------------------------------------------------ */
+
+  async function loadAmmo() {
+    const t0 = performance.now();
+    while (!window.Ammo) {
+      if (window.__ammoLoadError) throw new Error('The physics engine (ammo.js) could not be loaded from the CDN.');
+      if (performance.now() - t0 > 40000) throw new Error('Timed out loading the physics engine (ammo.js).');
+      await new Promise((r) => setTimeout(r, 40));
+    }
+    return await window.Ammo({ locateFile: (file) => AMMO_BASE + file });
+  }
+
+  async function init() {
+    Ammo = await loadAmmo();
+    initPhysics();
+    buildCloth();
+    applyMaterialPreset(params.material);
+
+    // post-processing
+    const rt = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 });
+    composer = new EffectComposer(renderer, rt);
+    composer.setPixelRatio(renderer.getPixelRatio());
+    composer.setSize(window.innerWidth, window.innerHeight);
+    composer.addPass(new RenderPass(scene, camera));
+    bloomPass = new UnrealBloomPass(
+      new THREE.Vector2(window.innerWidth, window.innerHeight), params.bloom, 0.72, 0.62
+    );
+    composer.addPass(bloomPass);
+    composer.addPass(new OutputPass());
+    gradePass = new ShaderPass(GradeShader);
+    gradePass.uniforms.uGrain.value = params.grain;
+    gradePass.uniforms.uVignette.value = params.vignette;
+    gradePass.uniforms.uAberration.value = params.aberration;
+    gradePass.uniforms.uDamage.value = params.damage;
+    composer.addPass(gradePass);
+
+    buildGUI();
+
+    state.ready = true;
+    state.phase = 'hold';
+    state.holdT = -0.55; // a beat after the curtain lifts
+    state.fade = 1;
+
+    // first render before lifting the curtain
+    uniformsTime.value = 0;
+    updateState(0, 0);
+    composer.render();
+
+    window.__veilReady = true;
+    boot.classList.add('done');
+    setTimeout(() => { if (boot.parentNode) boot.parentNode.removeChild(boot); }, 1500);
+    setTimeout(() => hint.classList.add('gone'), 11000);
+
+    animate();
+  }
+
+  /* ------------------------------------------------------------------ */
+  /*  animation loop                                                     */
+  /* ------------------------------------------------------------------ */
+
+  const clock = new THREE.Clock();
+
+  function animate() {
+    requestAnimationFrame(animate);
+    const dt = Math.min(clock.getDelta(), 0.05);
+    const t = clock.elapsedTime;
+    uniformsTime.value = t;
+
+    updateState(dt, t);
+    applyDrag(dt);
+    applyWind(t);
+    physics.stepSimulation(dt, 3, 1 / 60);
+    updateCloth(dt);
+
+    // shader-time uniforms
+    if (gradePass) {
+      gradePass.uniforms.uTime.value = t;
+      gradePass.uniforms.uExposure.value = 1.0;
+    }
+    if (glowDirTmp) {
+      camera.getWorldDirection(glowDirTmp);
+      backdropMat.uniforms.uGlowDir.value.copy(glowDirTmp);
+    }
+    if (beam) {
+      beam.rotation.y = Math.sin(t * 0.045) * 0.1;
+    }
+
+    controls.update();
+    composer.render();
+
+  }
+  const glowDirTmp = new THREE.Vector3();
+
+  init().catch((err) => {
+    console.error(err);
+    if (window.__veilFail) window.__veilFail(err && err.message ? err.message : err);
+  });
+  </script>
 </body>
 </html>
